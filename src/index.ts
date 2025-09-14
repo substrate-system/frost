@@ -7,6 +7,7 @@
 
 // Import for internal use
 import { createEd25519CipherSuite } from './ciphersuite.js'
+import type { FrostConfig } from './types.js'
 
 export type {
     ParticipantId,
@@ -38,13 +39,13 @@ export {
     computeChallenge
 } from './utils.js'
 
-// Re-export substrate keys for convenience
-export { EccKeys } from '@substrate-system/keys/ecc'
-
 /**
  * Create a FROST configuration with Ed25519 cipher suite
  */
-export function createFrostConfig (minSigners: number, maxSigners: number) {
+export function createFrostConfig (
+    minSigners:number,
+    maxSigners:number
+):FrostConfig {
     return {
         minSigners,
         maxSigners,

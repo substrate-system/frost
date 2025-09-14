@@ -68,10 +68,11 @@ export class FrostSigner {
     /**
      * Round 2: Generate signature share
      */
-    sign_round2 (
+    async sign_round2 (
         signingPackage: SigningPackage,
-        nonces: Nonces
-    ): RoundTwoOutputs {
+        nonces: Nonces,
+        groupPublicKey: GroupElement
+    ): Promise<RoundTwoOutputs> {
         const { cipherSuite } = this.config
         const { message, groupCommitment, participantIds } = signingPackage
 
@@ -92,18 +93,17 @@ export class FrostSigner {
         }
 
         // Compute Lagrange interpolation coefficient
-        const lambdaI = deriveInterpolatingValue(
+        const lambdaI = await deriveInterpolatingValue(
             this.keyPackage.participantId,
             participantIds,
             cipherSuite
         )
 
         // Compute challenge
-        const verifyingKeyBytes = cipherSuite.elementToBytes(
-            this.keyPackage.verificationKey)
+        const verifyingKeyBytes = cipherSuite.elementToBytes(groupPublicKey)
         const groupCommitmentBytes = cipherSuite.elementToBytes(
             groupCommitment.commitment)
-        const challenge = computeChallenge(
+        const challenge = await computeChallenge(
             groupCommitmentBytes,
             verifyingKeyBytes,
             message,
@@ -112,18 +112,17 @@ export class FrostSigner {
 
         // Compute signature share:
         // z_i = d_i + (e_i * binding_factor_i) + lambda_i * s_i * c
-        const bindingTerm = cipherSuite.scalarAdd(
-            nonces.hiding,
-            cipherSuite.scalarAdd(nonces.binding, bindingFactor)
+        const bindingTerm = cipherSuite.scalarMultiplyScalar(
+            nonces.binding,
+            bindingFactor
         )
-
-        const keyTerm = cipherSuite.scalarAdd(
+        const scalar = cipherSuite.scalarMultiplyScalar(
             lambdaI,
-            cipherSuite.scalarAdd(this.keyPackage.keyShare.privateShare,
-                challenge)
+            this.keyPackage.keyShare.privateShare
         )
-
-        const signatureShare = cipherSuite.scalarAdd(bindingTerm, keyTerm)
+        const keyTerm = cipherSuite.scalarMultiplyScalar(scalar, challenge)
+        const scalarAdd = cipherSuite.scalarAdd(nonces.hiding, bindingTerm)
+        const signatureShare = cipherSuite.scalarAdd(scalarAdd, keyTerm)
 
         return {
             signatureShare: {
@@ -145,11 +144,12 @@ export class FrostCoordinator {
      * Coordinate the signing process by collecting commitments and creating
      * signing package
      */
-    createSigningPackage (
+    async createSigningPackage (
         message: Uint8Array,
         commitmentShares: CommitmentShare[],
-        participantIds: ParticipantId[]
-    ): SigningPackage {
+        participantIds: ParticipantId[],
+        groupPublicKey: GroupElement
+    ): Promise<SigningPackage> {
         if (participantIds.length < this.config.minSigners) {
             throw new Error('Insufficient number of signers')
         }
@@ -171,10 +171,14 @@ export class FrostCoordinator {
         }
 
         // Create group commitment and binding factors
-        const { groupCommitment, bindingFactors } = this.computeGroupCommitment(
+        const {
+            groupCommitment,
+            bindingFactors
+        } = await this.computeGroupCommitment(
             message,
             commitmentShares,
-            participantIds
+            participantIds,
+            groupPublicKey
         )
 
         return {
@@ -226,18 +230,18 @@ export class FrostCoordinator {
     /**
      * Verify a FROST signature
      */
-    verify (
+    async verify (
         signature: FrostSignature,
         message: Uint8Array,
         verifyingKey: GroupElement
-    ): boolean {
+    ): Promise<boolean> {
         const { cipherSuite } = this.config
 
         try {
             // Compute challenge
             const rBytes = cipherSuite.elementToBytes(signature.R)
             const pkBytes = cipherSuite.elementToBytes(verifyingKey)
-            const challenge = computeChallenge(rBytes, pkBytes, message,
+            const challenge = await computeChallenge(rBytes, pkBytes, message,
                 cipherSuite)
 
             // Verify: [z]B = R + [c]PK
@@ -268,11 +272,15 @@ export class FrostCoordinator {
         }
     }
 
-    private computeGroupCommitment (
-        message: Uint8Array,
-        commitmentShares: CommitmentShare[],
-        participantIds: ParticipantId[]
-    ): { groupCommitment: GroupElement; bindingFactors: Map<number, Scalar> } {
+    private async computeGroupCommitment (
+        message:Uint8Array,
+        commitmentShares:CommitmentShare[],
+        participantIds:ParticipantId[],
+        groupPublicKey:GroupElement
+    ):Promise<{
+        groupCommitment:GroupElement;
+        bindingFactors:Map<number, Scalar>;
+    }> {
         const { cipherSuite } = this.config
 
         // Encode commitment list for binding factor computation
@@ -288,10 +296,10 @@ export class FrostCoordinator {
 
         // Compute binding factors for each participant
         const bindingFactors = new Map<number, Scalar>()
-        const verifyingKeyBytes = new Uint8Array(32) // Placeholder
+        const verifyingKeyBytes = cipherSuite.elementToBytes(groupPublicKey)
 
         for (const participantId of participantIds) {
-            const bindingFactor = computeBindingFactor(
+            const bindingFactor = await computeBindingFactor(
                 participantId,
                 verifyingKeyBytes,
                 commitmentList,

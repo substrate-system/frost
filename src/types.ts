@@ -81,8 +81,10 @@ export interface CipherSuite {
     readonly name:string
     readonly scalarSize:number
     readonly elementSize:number
-    readonly hashToScalar:(data:Uint8Array) => Scalar
-    readonly scalarMultiply:(scalar:Scalar, element:GroupElement) => GroupElement
+    readonly hashToScalar:(data:Uint8Array) => Promise<Scalar>
+    readonly scalarMultiply:(scalar:Scalar, element:GroupElement)=>GroupElement
+    readonly scalarMultiplyScalar:(a:Scalar, b:Scalar) => Scalar
+    readonly scalarInvert:(scalar:Scalar) => Scalar
     readonly scalarAdd:(a:Scalar, b:Scalar) => Scalar
     readonly scalarNegate:(scalar:Scalar) => Scalar
     readonly elementAdd:(a:GroupElement, b:GroupElement) => GroupElement

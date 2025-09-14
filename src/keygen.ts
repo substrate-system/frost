@@ -7,25 +7,23 @@ import type {
     KeyPackage,
     KeyShare,
     NonceCommitment,
-    ParticipantId,
     FrostConfig,
-    GroupElement,
     Scalar
 } from './types.js'
 
 export class TrustedDealer {
-    private config: FrostConfig
+    private config:FrostConfig
 
-    constructor (config: FrostConfig) {
+    constructor (config:FrostConfig) {
         this.config = config
     }
 
     /**
      * Generate keys using trusted dealer approach
-     * Creates a secret key, splits it using Shamir's secret sharing,
-     * and distributes shares to participants
+     * Create a secret key, split it using Shamir's secret sharing,
+     * and distribute shares to participants
      */
-    generateKeys (): TrustedDealerOutput {
+    generateKeys ():TrustedDealerOutput {
         const { minSigners, maxSigners, cipherSuite } = this.config
 
         // Generate master secret key
@@ -42,7 +40,7 @@ export class TrustedDealer {
         }
 
         // Create key packages for each participant
-        const keyPackages: KeyPackage[] = []
+        const keyPackages:KeyPackage[] = []
 
         for (let participantId = 1; participantId <= maxSigners; participantId++) {
             // Evaluate polynomial at participantId to get secret share
@@ -53,7 +51,7 @@ export class TrustedDealer {
             const publicShare = cipherSuite.scalarMultiply(privateShare,
                 cipherSuite.baseElement())
 
-            const keyShare: KeyShare = {
+            const keyShare:KeyShare = {
                 participantId: { id: participantId },
                 privateShare,
                 publicShare
@@ -62,7 +60,7 @@ export class TrustedDealer {
             // Pre-generate some signing commitments for this participant
             const signingCommitments = this.generateSigningCommitments(3)
 
-            const keyPackage: KeyPackage = {
+            const keyPackage:KeyPackage = {
                 participantId: { id: participantId },
                 keyShare,
                 verificationKey: groupPublicKey,
@@ -78,7 +76,7 @@ export class TrustedDealer {
         }
     }
 
-    private evaluatePolynomial (coefficients: Scalar[], x: number): Scalar {
+    private evaluatePolynomial (coefficients:Scalar[], x:number):Scalar {
         const { cipherSuite } = this.config
 
         if (coefficients.length === 0) {
@@ -108,9 +106,9 @@ export class TrustedDealer {
         return result
     }
 
-    private generateSigningCommitments (count: number): NonceCommitment[] {
+    private generateSigningCommitments (count:number):NonceCommitment[] {
         const { cipherSuite } = this.config
-        const commitments: NonceCommitment[] = []
+        const commitments:NonceCommitment[] = []
 
         for (let i = 0; i < count; i++) {
             const hidingNonce = cipherSuite.randomScalar()
@@ -130,7 +128,7 @@ export class TrustedDealer {
         return commitments
     }
 
-    private scalarFromInt (value: number): Scalar {
+    private scalarFromInt (value:number):Scalar {
         const { cipherSuite } = this.config
         const bytes = new Uint8Array(cipherSuite.scalarSize)
         const view = new DataView(bytes.buffer)
@@ -138,13 +136,9 @@ export class TrustedDealer {
         return cipherSuite.bytesToScalar(bytes)
     }
 
-    private scalarMultiply (a: Scalar, b: Scalar): Scalar {
-        // This is a placeholder - real implementation would use proper
-        // scalar multiplication
-        const combined = new Uint8Array(a.value.length + b.value.length)
-        combined.set(a.value, 0)
-        combined.set(b.value, a.value.length)
-        return this.config.cipherSuite.hashToScalar(combined)
+    private scalarMultiply (a:Scalar, b:Scalar):Scalar {
+        // Use the proper scalar multiplication
+        return this.config.cipherSuite.scalarMultiplyScalar(a, b)
     }
 }
 
@@ -152,9 +146,9 @@ export class TrustedDealer {
  * Verify that a key package is valid
  */
 export function verifyKeyPackage (
-    keyPackage: KeyPackage,
-    config: FrostConfig
-): boolean {
+    keyPackage:KeyPackage,
+    config:FrostConfig
+):boolean {
     const { cipherSuite } = config
 
     try {
