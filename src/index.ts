@@ -1,6 +1,5 @@
 import { createDebug } from '@substrate-system/debug'
-const debug = createDebug()
+import { EccKeys } from '@substrate-system/keys/ecc'
+const debug = createDebug('frost')
 
-export function example ():void {
-    debug('hello')
-}
+debug('ecc keys', EccKeys)
