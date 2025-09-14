@@ -5,9 +5,9 @@
 import type { Scalar, ParticipantId, CipherSuite } from './types.js'
 
 export function encodeGroupCommitmentList (
-    participantList: ParticipantId[],
-    commitmentList: Uint8Array[]
-): Uint8Array {
+    participantList:ParticipantId[],
+    commitmentList:Uint8Array[]
+):Uint8Array {
     const encoder = new TextEncoder()
     let result = new Uint8Array(0)
 
@@ -40,13 +40,11 @@ export function encodeGroupCommitmentList (
     return result
 }
 
-export function deriveInterpolatingValue (
-    participantId: ParticipantId,
-    signerIds: ParticipantId[],
-    cipherSuite: CipherSuite
-): Scalar {
-    const encoder = new TextEncoder()
-
+export async function deriveInterpolatingValue (
+    participantId:ParticipantId,
+    signerIds:ParticipantId[],
+    cipherSuite:CipherSuite
+):Promise<Scalar> {
     // Compute Lagrange interpolation coefficient
     let numerator = cipherSuite.scalarToBytes(scalarFromInt(1, cipherSuite))
     let denominator = cipherSuite.scalarToBytes(scalarFromInt(1, cipherSuite))
@@ -55,13 +53,12 @@ export function deriveInterpolatingValue (
         if (otherId.id !== participantId.id) {
             // numerator *= otherId
             const otherScalar = scalarFromInt(otherId.id, cipherSuite)
-            numerator = cipherSuite.scalarToBytes(
-                scalarMultiply(
-                    cipherSuite.bytesToScalar(numerator),
-                    otherScalar,
-                    cipherSuite
-                )
+            const scalar = await scalarMultiply(
+                cipherSuite.bytesToScalar(numerator),
+                otherScalar,
+                cipherSuite
             )
+            numerator = cipherSuite.scalarToBytes(scalar)
 
             // denominator *= (otherId - participantId)
             const diff = scalarSubtract(
@@ -70,7 +67,7 @@ export function deriveInterpolatingValue (
                 cipherSuite
             )
             denominator = cipherSuite.scalarToBytes(
-                scalarMultiply(
+                await scalarMultiply(
                     cipherSuite.bytesToScalar(denominator),
                     diff,
                     cipherSuite
@@ -80,50 +77,53 @@ export function deriveInterpolatingValue (
     }
 
     // Return numerator / denominator
-    const denominatorInverse = scalarInvert(cipherSuite.bytesToScalar(denominator), cipherSuite)
-    return scalarMultiply(cipherSuite.bytesToScalar(numerator), denominatorInverse, cipherSuite)
+    const denominatorInverse = scalarInvert(
+        cipherSuite.bytesToScalar(denominator),
+        cipherSuite
+    )
+
+    return scalarMultiply(
+        cipherSuite.bytesToScalar(numerator),
+        denominatorInverse,
+        cipherSuite
+    )
 }
 
-export function scalarFromInt (value: number, cipherSuite: CipherSuite): Scalar {
+export function scalarFromInt (value:number, cipherSuite:CipherSuite):Scalar {
     const bytes = new Uint8Array(cipherSuite.scalarSize)
     const view = new DataView(bytes.buffer)
     view.setUint32(bytes.length - 4, value, false) // Big-endian
     return cipherSuite.bytesToScalar(bytes)
 }
 
-export function scalarMultiply (a: Scalar, b: Scalar,
-    cipherSuite: CipherSuite): Scalar {
-    // This would need to be implemented based on the specific curve
-    // For now, return a placeholder that concatenates and hashes
-    const combined = new Uint8Array(a.value.length + b.value.length)
-    combined.set(a.value, 0)
-    combined.set(b.value, a.value.length)
-    return cipherSuite.hashToScalar(combined)
+export async function scalarMultiply (
+    a:Scalar,
+    b:Scalar,
+    cipherSuite:CipherSuite
+):Promise<Scalar> {
+    // Use the cipher suite's scalar-to-scalar multiplication
+    return cipherSuite.scalarMultiplyScalar(a, b)
 }
 
-export function scalarSubtract (a: Scalar, b: Scalar,
-    cipherSuite: CipherSuite): Scalar {
+export function scalarSubtract (a:Scalar, b:Scalar,
+    cipherSuite:CipherSuite):Scalar {
     // This is a placeholder implementation
     // Real implementation would do proper scalar subtraction
     const negB = cipherSuite.scalarNegate(b)
     return cipherSuite.scalarAdd(a, negB)
 }
 
-export function scalarInvert (scalar: Scalar, cipherSuite: CipherSuite):
-    Scalar {
-    // This is a placeholder - would need proper modular inverse
-    // implementation. For demo purposes, return the scalar itself
-    // (this is NOT cryptographically correct)
-    return scalar
+export function scalarInvert (scalar:Scalar, cipherSuite:CipherSuite):Scalar {
+    return cipherSuite.scalarInvert(scalar)
 }
 
-export function computeBindingFactor (
-    participantId: ParticipantId,
-    verifyingKey: Uint8Array,
-    commitmentList: Uint8Array,
-    message: Uint8Array,
-    cipherSuite: CipherSuite
-): Scalar {
+export async function computeBindingFactor (
+    participantId:ParticipantId,
+    verifyingKey:Uint8Array,
+    commitmentList:Uint8Array,
+    message:Uint8Array,
+    cipherSuite:CipherSuite
+):Promise<Scalar> {
     const encoder = new TextEncoder()
 
     // Create binding factor input
@@ -142,15 +142,15 @@ export function computeBindingFactor (
     offset += commitmentList.length
     combined.set(message, offset)
 
-    return cipherSuite.hashToScalar(combined)
+    return await cipherSuite.hashToScalar(combined)
 }
 
-export function computeChallenge (
-    groupCommitment: Uint8Array,
-    verifyingKey: Uint8Array,
-    message: Uint8Array,
-    cipherSuite: CipherSuite
-): Scalar {
+export async function computeChallenge (
+    groupCommitment:Uint8Array,
+    verifyingKey:Uint8Array,
+    message:Uint8Array,
+    cipherSuite:CipherSuite
+):Promise<Scalar> {
     const combined = new Uint8Array(
         groupCommitment.length + verifyingKey.length + message.length
     )
@@ -162,5 +162,5 @@ export function computeChallenge (
     offset += verifyingKey.length
     combined.set(message, offset)
 
-    return cipherSuite.hashToScalar(combined)
+    return await cipherSuite.hashToScalar(combined)
 }
