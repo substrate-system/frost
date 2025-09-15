@@ -12,7 +12,9 @@ console.log('FROST Example: Alice creates a keypair using ' +
 
 // Step 1: Alice creates her Ed25519 keypair using @substrate-system/keys
 console.log('1. Alice creates her Ed25519 keypair using @substrate-system/keys')
-const aliceKeys = await EccKeys.create(false, true) // not session, extractable for backup
+
+// not session, extractable for backup
+const aliceKeys = await EccKeys.create(false, true)
 console.log(`   - Alice's DID: ${aliceKeys.DID}`)
 console.log('   - Keys are extractable for backup purposes')
 
@@ -58,21 +60,30 @@ const signingPackage = await coordinator.createSigningPackage(
 // Round 2: Generate signature shares
 const signatureShares: SignatureShare[] = []
 for (let i = 0; i < signers.length; i++) {
-    const res = await signers[i].sign_round2(signingPackage, round1[i].nonces, groupPublicKey)
+    const res = await signers[i].sign_round2(
+        signingPackage,
+        round1[i].nonces,
+        groupPublicKey
+    )
     signatureShares.push(res.signatureShare)
 }
 
 // Aggregate and verify
-const finalSignature = coordinator.aggregateSignatures(signingPackage, signatureShares)
+const finalSignature = coordinator.aggregateSignatures(
+    signingPackage,
+    signatureShares
+)
 const valid = await coordinator.verify(finalSignature, message, groupPublicKey)
 
 console.log('\n4. Results:')
 console.log('   - Signature created using Bob, Carol, and Desmond\'s shares')
 console.log(`   - Signature valid: ${valid}`)
-console.log('   - This proves Alice\'s key can be recovered with any 3 of the 4 shares')
+console.log('   - This proves Alice\'s key can be recovered with any' +
+    ' 3 of the 4 shares')
 
 if (valid) {
-    console.log('\nSuccess! Alice can recover her keypair using any 3 participants.')
+    console.log('\nSuccess! Alice can recover her keypair using any' +
+        ' 3 participants.')
 } else {
     console.log('\nSomething went wrong with the key recovery.')
 }

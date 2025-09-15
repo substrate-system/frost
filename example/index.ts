@@ -1,6 +1,6 @@
 import { render } from 'preact'
 import { html } from 'htm/preact'
-import { signal, computed } from '@preact/signals'
+import { signal, computed, useComputed } from '@preact/signals'
 import { EccKeys } from '@substrate-system/keys/ecc'
 import {
     createFrostConfig,
@@ -42,7 +42,9 @@ async function backupKey () {
 
         // Step 1: Alice creates her keypair using @substrate-system/keys
         console.log('1. Alice creates keys using @substrate-system/keys (extractable for backup)')
-        const aliceKeys = await EccKeys.create(false, true) // not session, extractable for backup
+
+        // not session, extractable for backup
+        const aliceKeys = await EccKeys.create(false, true)
         console.log('   - Alice generates Ed25519 keypair for signing')
         console.log(`   - Alice's DID: ${aliceKeys.DID.slice(0, 32)}...`)
 
@@ -165,6 +167,18 @@ function resetDemo () {
 }
 
 function Example () {
+    const backupBtnClass = useComputed<string>(() => {
+        // class="btn ${(isRunning.value || isBackedUp.value) ? 'disabled' : 'primary'}"
+        const running = isRunning.value
+        const saved = isBackedUp.value
+
+        let classString = 'btn'
+        if (running && saved) classString += ' disabled'
+        else classString += ' primary'
+
+        return classString
+    })
+
     return html`
     <div class="example">
         <h1>FROST Key Backup & Recovery</h1>
@@ -202,7 +216,7 @@ function Example () {
             <button
                 onClick=${backupKey}
                 disabled=${isRunning.value || isBackedUp.value}
-                class="btn ${(isRunning.value || isBackedUp.value) ? 'disabled' : 'primary'}"
+                class="${backupBtnClass.value}"
             >
                 ${isBackedUp.value ? 'Key Backed Up' : 'Backup Key'}
             </button>
@@ -229,7 +243,9 @@ function Example () {
                 <h3>Current Status</h3>
                 <p><strong>Operation:</strong> ${currentOperation.value || 'None'}</p>
                 <p><strong>Step:</strong> ${currentStep.value}</p>
-                ${isRunning.value && html`<p class="processing-text">Processing...</p>`}
+                ${isRunning.value && html`<p class="processing-text">
+                    Processing...
+                </p>`}
             </div>
         `}
 
@@ -247,9 +263,17 @@ function Example () {
                     <strong>Participants:</strong> Alice (owner), Bob, Carol
                     (backup holders)
                 </p>
-                <p><strong>Group Public Key:</strong> ${keyGenResult.value.groupPublicKey.point.slice(0, 8).join('')}...</p>
-                <p><strong>Key Packages Created:</strong> ${keyGenResult.value.keyPackages.length}</p>
-                <p><strong>Backup Shards:</strong> ${backupShards.value.length} (Bob, Carol)</p>
+                <p>
+                    <strong>Group Public Key: </strong>
+                    ${keyGenResult.value.groupPublicKey.point.slice(0, 8).join('')}...</p>
+                <p>
+                    <strong>Key Packages Created: </strong>
+                    ${keyGenResult.value.keyPackages.length}
+                </p>
+                <p>
+                    <strong>Backup Shards: </strong>
+                    ${backupShards.value.length} (Bob, Carol)
+                </p>
             </div>
         `}
 
@@ -258,9 +282,18 @@ function Example () {
                 <h3>Recovery Verification</h3>
                 <p><strong>Test Message:</strong>
                 "Alice's important message" (${messageLength.value} bytes)</p>
-                <p><strong>Signature Valid:</strong> ${isValid.value ? 'Yes' : 'No'}</p>
-                <p><strong>R Component:</strong> ${finalSignature.value.R.point.length} bytes</p>
-                <p><strong>z Component:</strong> ${finalSignature.value.z.value.length} bytes</p>
+                <p>
+                    <strong>Signature Valid: </strong>
+                    ${isValid.value ? 'Yes' : 'No'}
+                </p>
+                <p>
+                    <strong>R Component: </strong>
+                    ${finalSignature.value.R.point.length} bytes
+                </p>
+                <p>
+                    <strong>z Component: </strong>
+                    ${finalSignature.value.z.value.length} bytes
+                </p>
                 ${isValid.value && html`
                     <p class="success-message">
                         Success! Alice's key was successfully recovered using
@@ -272,29 +305,67 @@ function Example () {
 
         <div class="info-section">
             <h3>How It Works</h3>
-            <p>This demonstrates secure key management combining <strong>@substrate-system/keys</strong> with <strong>FROST</strong> signatures:</p>
+            <p>This demonstrates secure key management combining
+                <strong>@substrate-system/keys</strong> with
+                <strong>FROST</strong> signatures:</p>
             <ul>
-                <li><strong>Key Creation:</strong> Alice generates Ed25519 keypair using @substrate-system/keys (extractable for backup)</li>
-                <li><strong>Backup:</strong> FROST creates a ${threshold.value}-of-${participantCount.value} threshold setup, distributing key shares to trusted participants</li>
-                <li><strong>Recovery:</strong> Any ${threshold.value} participants can work together to recover Alice's key</li>
-                <li><strong>Security:</strong> No single participant can recover the key alone - requires cooperation</li>
+                <li>
+                    <strong>Key Creation: </strong>
+                    Alice generates Ed25519 keypair using @substrate-system/keys
+                    (extractable for backup)
+                </li>
+                <li>
+                    <strong>Backup: </strong>
+                    FROST creates a
+                    ${threshold.value}-of-${participantCount.value}
+                    threshold setup, distributing key shares to
+                    trusted participants
+                </li>
+                <li>
+                    <strong>Recovery: </strong>
+                    Any ${threshold.value} participants can work together to
+                    recover Alice's key
+                </li>
+                <li>
+                    <strong>Security: </strong>
+                    No single participant can recover the key
+                    alone - requires cooperation
+                </li>
             </ul>
         </div>
 
         <div class="protocol-section">
             <h3>FROST Protocol Steps</h3>
             <ol>
-                <li><strong>Key Generation:</strong> Create ${threshold.value}-of-${participantCount.value} threshold setup</li>
-                <li><strong>Distribution:</strong> Share key packages with backup holders</li>
-                <li><strong>Recovery Round 1:</strong> Generate nonce commitments</li>
-                <li><strong>Recovery Round 2:</strong> Generate signature shares</li>
-                <li><strong>Aggregation:</strong> Combine shares into final signature</li>
-                <li><strong>Verification:</strong> Prove key recovery by signature validation</li>
+                <li>
+                    <strong>Key Generation:</strong>
+                    Create ${threshold.value}-of-${participantCount.value}
+                    threshold setup
+                </li>
+                <li>
+                    <strong>Distribution: </strong>
+                    Share key packages with backup holders
+                </li>
+                <li>
+                    <strong>Recovery Round 1:</strong> Generate nonce commitments
+                </li>
+                <li>
+                    <strong>Recovery Round 2:</strong> Generate signature shares
+                </li>
+                <li>
+                    <strong>Aggregation: </strong>
+                    Combine shares into final signature
+                </li>
+                <li>
+                    <strong>Verification: </strong>
+                    Prove key recovery by signature validation
+                </li>
             </ol>
         </div>
 
         <p class="footer-text">
-            Check the browser console for detailed logging of the FROST protocol execution.
+            Check the browser console for detailed logging of the FROST
+            protocol execution.
         </p>
     </div>
   `

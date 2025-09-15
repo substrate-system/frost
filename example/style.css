@@ -12,13 +12,12 @@
 
 .status-indicators {
     display: flex;
-    gap: 20px;
+    gap: 1rem;
     margin: 20px 0;
 }
 
 .status-card {
-    padding: 15px;
-    border-radius: 8px;
+    padding: 1rem;
     flex: 1;
     text-align: center;
     border: 2px solid;

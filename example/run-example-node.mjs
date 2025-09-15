@@ -7,12 +7,14 @@ import {
 } from '../dist/index.js'
 
 async function run () {
-    console.log('FROST Example: Alice creates a keypair using @substrate-system/keys,' +
-        ' then Bob and Carol help recover it\n')
+    console.log('FROST Example: Alice creates a keypair using' +
+        ' @substrate-system/keys, then Bob and Carol help recover it\n')
 
     // Step 1: Alice creates her Ed25519 keypair using @substrate-system/keys
     console.log('1. Alice creates her Ed25519 keypair using @substrate-system/keys')
-    const aliceKeys = await EccKeys.create(false, true) // not session, extractable for backup
+
+    // not session, extractable for backup
+    const aliceKeys = await EccKeys.create(false, true)
     console.log(`   - Alice's DID: ${aliceKeys.DID}`)
     console.log('   - Keys are extractable for backup purposes')
 
