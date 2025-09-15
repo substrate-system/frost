@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@noble/ed25519": "^3.0.0",
-    "@substrate-system/keys": "^0.2.14"
+    "@substrate-system/keys": "^0.2.15"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",

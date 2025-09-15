@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import { html } from 'htm/preact'
 import { signal, computed } from '@preact/signals'
+import { EccKeys } from '@substrate-system/keys/ecc'
 import {
     createFrostConfig,
     TrustedDealer,
@@ -37,18 +38,24 @@ async function backupKey () {
         isRunning.value = true
         currentOperation.value = 'backup'
         errorMessage.value = null
-        currentStep.value = 'Creating FROST backup setup'
+        currentStep.value = 'Creating keys and FROST backup setup'
 
-        // Step 1: Alice creates her keypair using FROST (2-of-3 threshold)
-        console.log('1. Alice creates a 2-of-3 FROST backup setup')
+        // Step 1: Alice creates her keypair using @substrate-system/keys
+        console.log('1. Alice creates keys using @substrate-system/keys (extractable for backup)')
+        const aliceKeys = await EccKeys.create(false, true) // not session, extractable for backup
+        console.log('   - Alice generates Ed25519 keypair for signing')
+        console.log(`   - Alice's DID: ${aliceKeys.DID.slice(0, 32)}...`)
+
+        // Step 2: Alice creates a 2-of-3 FROST backup setup
+        console.log('2. Alice creates a 2-of-3 FROST backup setup')
         const dealer = new TrustedDealer(config.value)
         const keyGen = dealer.generateKeys()
         keyGenResult.value = keyGen
 
         // Name the participants and store backup shards (take 2 out of 3 for backup)
-        const [_aliceKey, bobKey, carlKey] = keyGen.keyPackages
-        backupShards.value = [bobKey, carlKey]
-        console.log('   - Alice creates backup shards for Bob and Carl')
+        const [_aliceKey, bobKey, carolKey] = keyGen.keyPackages
+        backupShards.value = [bobKey, carolKey]
+        console.log('   - Alice creates backup shards for Bob and Carol')
 
         currentStep.value = 'Backup created successfully'
         isBackedUp.value = true
@@ -163,8 +170,9 @@ function Example () {
         <h1>FROST Key Backup & Recovery</h1>
 
         <div class="intro">
-            <h3>Secure Key Management with FROST</h3>
-            <p><strong>Setup:</strong> ${threshold.value}-of-${participantCount.value} threshold backup system</p>
+            <h3>Secure Key Management with @substrate-system/keys + FROST</h3>
+            <p><strong>Keys:</strong> Ed25519 keypair created with @substrate-system/keys (extractable)</p>
+            <p><strong>Backup:</strong> ${threshold.value}-of-${participantCount.value} threshold backup system using FROST</p>
             <p><strong>Participants:</strong> Alice (owner), Bob, Carl (backup holders)</p>
             <p><strong>Cipher Suite:</strong> ${config.value.cipherSuite.name}</p>
         </div>
@@ -242,30 +250,33 @@ function Example () {
         ${finalSignature.value && html`
             <div style="background: ${isValid.value ? '#d1ecf1' : '#f8d7da'}; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${isValid.value ? '#17a2b8' : '#dc3545'};">
                 <h3 style="margin-top: 0;">${isValid.value ? '✅' : '❌'} Recovery Verification</h3>
-                <p><strong>Test Message:</strong> "Alice's important message" (${messageLength.value} bytes)</p>
+                <p><strong>Test Message:</strong>
+                "Alice's important message" (${messageLength.value} bytes)</p>
                 <p><strong>Signature Valid:</strong> ${isValid.value ? 'Yes ✅' : 'No ❌'}</p>
                 <p><strong>R Component:</strong> ${finalSignature.value.R.point.length} bytes</p>
                 <p><strong>z Component:</strong> ${finalSignature.value.z.value.length} bytes</p>
                 ${isValid.value && html`
                     <p style="color: #155724; font-weight: bold; background: #d4edda; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                        🎉 Success! Alice's key was successfully recovered using the backup shards from Bob and Carl.
+                        Success! Alice's key was successfully recovered using
+                        the backup shards from Bob and Carol.
                     </p>
                 `}
             </div>
         `}
 
         <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <h3 style="margin-top: 0;">💡 How It Works</h3>
-            <p>This demonstrates FROST (Flexible Round-Optimized Schnorr Threshold) signatures for secure key backup and recovery:</p>
+            <h3 style="margin-top: 0;">How It Works</h3>
+            <p>This demonstrates secure key management combining <strong>@substrate-system/keys</strong> with <strong>FROST</strong> signatures:</p>
             <ul>
-                <li><strong>Backup:</strong> Alice creates a ${threshold.value}-of-${participantCount.value} threshold setup, distributing key shares to trusted participants</li>
+                <li><strong>Key Creation:</strong> Alice generates Ed25519 keypair using @substrate-system/keys (extractable for backup)</li>
+                <li><strong>Backup:</strong> FROST creates a ${threshold.value}-of-${participantCount.value} threshold setup, distributing key shares to trusted participants</li>
                 <li><strong>Recovery:</strong> Any ${threshold.value} participants can work together to recover Alice's key</li>
                 <li><strong>Security:</strong> No single participant can recover the key alone - requires cooperation</li>
             </ul>
         </div>
 
         <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-            <h3 style="margin-top: 0;">🔄 FROST Protocol Steps</h3>
+            <h3 style="margin-top: 0;">FROST Protocol Steps</h3>
             <ol>
                 <li><strong>Key Generation:</strong> Create ${threshold.value}-of-${participantCount.value} threshold setup</li>
                 <li><strong>Distribution:</strong> Share key packages with backup holders</li>

@@ -1,3 +1,4 @@
+import { EccKeys } from '@substrate-system/keys/ecc'
 import {
     createFrostConfig,
     TrustedDealer,
@@ -6,16 +7,22 @@ import {
     type SignatureShare
 } from '../src/index.js'
 
-console.log('FROST Example: Alice creates a keypair, then Bob and Carl help recover it\n')
+console.log('FROST Example: Alice creates a keypair using @substrate-system/keys, then Bob and Carl help recover it\n')
 
-// Step 1: Alice creates her keypair using FROST (3-of-4 threshold)
-console.log('1. Alice creates a 3-of-4 FROST setup')
+// Step 1: Alice creates her Ed25519 keypair using @substrate-system/keys
+console.log('1. Alice creates her Ed25519 keypair using @substrate-system/keys')
+const aliceKeys = await EccKeys.create(false, true) // not session, extractable for backup
+console.log(`   - Alice's DID: ${aliceKeys.DID}`)
+console.log('   - Keys are extractable for backup purposes')
+
+// Step 2: Alice creates a 3-of-4 FROST setup for key recovery
+console.log('\n2. Alice creates a 3-of-4 FROST setup for key recovery')
 const config = createFrostConfig(3, 4) // Need 3 out of 4 to recover
 const dealer = new TrustedDealer(config)
 const { groupPublicKey, keyPackages } = dealer.generateKeys()
 
 // Name the participants
-const [aliceKey, bobKey, carlKey, desmondKey] = keyPackages
+const [_aliceKey, bobKey, carlKey, desmondKey] = keyPackages
 console.log('   - Alice, Bob, Carl, and Desmond each get a key share')
 console.log(`   - Group public key: ${groupPublicKey.point.slice(0, 8).join('')}...`)
 
@@ -58,9 +65,9 @@ const finalSignature = coordinator.aggregateSignatures(signingPackage, signature
 const valid = await coordinator.verify(finalSignature, message, groupPublicKey)
 
 console.log('\n4. Results:')
-console.log(`   - Signature created using Bob, Carl, and Desmond's shares`)
+console.log('   - Signature created using Bob, Carl, and Desmond\'s shares')
 console.log(`   - Signature valid: ${valid}`)
-console.log(`   - This proves Alice's key can be recovered with any 3 of the 4 shares`)
+console.log('   - This proves Alice\'s key can be recovered with any 3 of the 4 shares')
 
 if (valid) {
     console.log('\nSuccess! Alice can recover her keypair using any 3 participants.')
