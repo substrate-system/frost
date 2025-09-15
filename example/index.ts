@@ -26,6 +26,7 @@ const isBackedUp = signal(false)
 const isRecovered = signal(false)
 // const backupShards = signal<any[]>([])
 const currentOperation = signal<'backup' | 'recovery' | null>(null)
+const originalAliceKeys = signal<any>(null)
 const backups = {
     bob: signal<null|KeyPackage>(null),
     carol: signal<null|KeyPackage>(null),
@@ -46,6 +47,30 @@ const messageLength = computed<number>(() => 'Alice\'s important message'.length
 const selectedCount = computed<number>(() => {
     return Object.values(selectedForRecovery).filter(s => s.value).length
 })
+const keyComparison = computed(() => {
+    if (!originalAliceKeys.value || !keyGenResult.value) return null
+
+    // Compare the public keys
+    const alicePublicKey = originalAliceKeys.value.publicKey
+    const frostGroupPublicKey = keyGenResult.value.groupPublicKey.point
+
+    // Convert to comparable format (both should be Uint8Array or similar)
+    const aliceKeyBytes = new Uint8Array(alicePublicKey)
+    const frostKeyBytes = new Uint8Array(frostGroupPublicKey)
+
+    // Check if they're the same length and have the same bytes
+    const sameLength = aliceKeyBytes.length === frostKeyBytes.length
+    const sameBytes = sameLength && aliceKeyBytes.every((byte, i) => byte === frostKeyBytes[i])
+
+    return {
+        sameLength,
+        sameBytes,
+        aliceKeyLength: aliceKeyBytes.length,
+        frostKeyLength: frostKeyBytes.length,
+        aliceKeyHex: Array.from(aliceKeyBytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(''),
+        frostKeyHex: Array.from(frostKeyBytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('')
+    }
+})
 
 async function backupKey () {
     if (isRunning.value) return
@@ -62,6 +87,7 @@ async function backupKey () {
 
         // not session, extractable for backup
         const aliceKeys = await EccKeys.create(false, true)
+        originalAliceKeys.value = aliceKeys
         console.log('   - Alice generates Ed25519 keypair for signing')
         console.log(`   - Alice's DID: ${aliceKeys.DID.slice(0, 32)}...`)
 
@@ -207,6 +233,7 @@ function resetDemo () {
     selectedForRecovery.bob.value = false
     selectedForRecovery.carol.value = false
     selectedForRecovery.desmond.value = false
+    originalAliceKeys.value = null
     isValid.value = false
     errorMessage.value = null
     currentStep.value = 'idle'
@@ -387,6 +414,38 @@ function Example () {
                     <strong>Key Packages Created: </strong>
                     ${keyGenResult.value.keyPackages.length}
                 </p>
+            </div>
+        `}
+
+        ${keyComparison.value && html`
+            <div class="key-comparison-section">
+                <h3>Key Comparison</h3>
+                <div class="comparison-grid">
+                    <div class="key-info">
+                        <h4>Alice's Original Key</h4>
+                        <p><strong>Length:</strong> ${keyComparison.value.aliceKeyLength} bytes</p>
+                        <p><strong>First 8 bytes:</strong> ${keyComparison.value.aliceKeyHex}...</p>
+                    </div>
+                    <div class="key-info">
+                        <h4>FROST Group Key</h4>
+                        <p><strong>Length:</strong> ${keyComparison.value.frostKeyLength} bytes</p>
+                        <p><strong>First 8 bytes:</strong> ${keyComparison.value.frostKeyHex}...</p>
+                    </div>
+                </div>
+                <div class="comparison-result ${keyComparison.value.sameBytes ? 'keys-match' : 'keys-different'}">
+                    <p><strong>Key Comparison:</strong></p>
+                    <p>
+                        ${keyComparison.value.sameBytes
+                            ? '✅ Keys are identical - exact same bytes!'
+                            : '❌ Keys are different - FROST creates a separate group key'}
+                    </p>
+                    ${!keyComparison.value.sameBytes && html`
+                        <p class="explanation">
+                            <strong>Note:</strong> This is expected behavior. FROST creates a new group public key
+                            that represents the distributed key, rather than directly backing up Alice's original key.
+                        </p>
+                    `}
+                </div>
             </div>
         `}
 
