@@ -180,14 +180,14 @@ function Example () {
         <!-- Key Status Indicators -->
         <div style="display: flex; gap: 20px; margin: 20px 0;">
             <div style="background: ${isBackedUp.value ? '#d1ecf1' : '#e2e3e5'}; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border: 2px solid ${isBackedUp.value ? '#bee5eb' : '#d1d3d4'};">
-                <h4 style="margin: 0; color: ${isBackedUp.value ? '#0c5460' : '#495057'};">🔐 Key Backup</h4>
+                <h4 style="margin: 0; color: ${isBackedUp.value ? '#0c5460' : '#495057'};">Key Backup</h4>
                 <p style="margin: 5px 0; font-weight: bold; color: ${isBackedUp.value ? '#0c5460' : '#6c757d'};">
                     ${isBackedUp.value ? 'BACKED UP' : 'NOT BACKED UP'}
                 </p>
             </div>
 
             <div style="background: ${isRecovered.value ? '#d1ecf1' : '#e2e3e5'}; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border: 2px solid ${isRecovered.value ? '#bee5eb' : '#d1d3d4'};">
-                <h4 style="margin: 0; color: ${isRecovered.value ? '#0c5460' : '#495057'};">🔓 Key Recovery</h4>
+                <h4 style="margin: 0; color: ${isRecovered.value ? '#0c5460' : '#495057'};">Key Recovery</h4>
                 <p style="margin: 5px 0; font-weight: bold; color: ${isRecovered.value ? '#0c5460' : '#6c757d'};">
                     ${isRecovered.value ? 'RECOVERED' : 'NOT RECOVERED'}
                 </p>
@@ -201,7 +201,7 @@ function Example () {
                 disabled=${isRunning.value || isBackedUp.value}
                 style="padding: 12px 24px; background: ${isBackedUp.value ? '#6c757d' : '#007acc'}; color: white; border: none; border-radius: 6px; cursor: ${(isRunning.value || isBackedUp.value) ? 'not-allowed' : 'pointer'}; opacity: ${(isRunning.value || isBackedUp.value) ? 0.6 : 1}; font-weight: bold;"
             >
-                ${isBackedUp.value ? '✓ Key Backed Up' : '🔐 Backup Key'}
+                ${isBackedUp.value ? 'Key Backed Up' : 'Backup Key'}
             </button>
 
             <button
@@ -209,7 +209,7 @@ function Example () {
                 disabled=${isRunning.value || !isBackedUp.value || isRecovered.value}
                 style="padding: 12px 24px; background: ${!isBackedUp.value || isRecovered.value ? '#6c757d' : '#28a745'}; color: white; border: none; border-radius: 6px; cursor: ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 'not-allowed' : 'pointer'}; opacity: ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 0.6 : 1}; font-weight: bold;"
             >
-                ${isRecovered.value ? '✓ Key Recovered' : '🔓 Recover Key'}
+                ${isRecovered.value ? 'Key Recovered' : 'Recover Key'}
             </button>
 
             <button
@@ -217,7 +217,7 @@ function Example () {
                 disabled=${isRunning.value}
                 style="padding: 12px 24px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: ${isRunning.value ? 'not-allowed' : 'pointer'}; opacity: ${isRunning.value ? 0.6 : 1}; font-weight: bold;"
             >
-                🔄 Reset Demo
+                Reset Demo
             </button>
         </div>
 
@@ -226,20 +226,20 @@ function Example () {
                 <h3 style="margin-top: 0;">Current Status</h3>
                 <p><strong>Operation:</strong> ${currentOperation.value || 'None'}</p>
                 <p><strong>Step:</strong> ${currentStep.value}</p>
-                ${isRunning.value && html`<p style="color: #666;">⏳ Processing...</p>`}
+                ${isRunning.value && html`<p style="color: #666;">Processing...</p>`}
             </div>
         `}
 
         ${errorMessage.value && html`
             <div style="background: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #f5c6cb; border-left: 4px solid #dc3545;">
-                <h3 style="color: #721c24; margin-top: 0;">❌ Error</h3>
+                <h3 style="color: #721c24; margin-top: 0;">Error</h3>
                 <p style="color: #721c24;">${errorMessage.value}</p>
             </div>
         `}
 
         ${keyGenResult.value && html`
             <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-                <h3 style="margin-top: 0;">🔑 Key Generation Results</h3>
+                <h3 style="margin-top: 0;">Key Generation Results</h3>
                 <p><strong>Participants:</strong> Alice (owner), Bob, Carl (backup holders)</p>
                 <p><strong>Group Public Key:</strong> ${keyGenResult.value.groupPublicKey.point.slice(0, 8).join('')}...</p>
                 <p><strong>Key Packages Created:</strong> ${keyGenResult.value.keyPackages.length}</p>
@@ -249,10 +249,10 @@ function Example () {
 
         ${finalSignature.value && html`
             <div style="background: ${isValid.value ? '#d1ecf1' : '#f8d7da'}; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${isValid.value ? '#17a2b8' : '#dc3545'};">
-                <h3 style="margin-top: 0;">${isValid.value ? '✅' : '❌'} Recovery Verification</h3>
+                <h3 style="margin-top: 0;">Recovery Verification</h3>
                 <p><strong>Test Message:</strong>
                 "Alice's important message" (${messageLength.value} bytes)</p>
-                <p><strong>Signature Valid:</strong> ${isValid.value ? 'Yes ✅' : 'No ❌'}</p>
+                <p><strong>Signature Valid:</strong> ${isValid.value ? 'Yes' : 'No'}</p>
                 <p><strong>R Component:</strong> ${finalSignature.value.R.point.length} bytes</p>
                 <p><strong>z Component:</strong> ${finalSignature.value.z.value.length} bytes</p>
                 ${isValid.value && html`
