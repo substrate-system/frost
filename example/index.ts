@@ -186,7 +186,10 @@ function resetDemo () {
     isRecovered.value = false
     keyGenResult.value = null
     finalSignature.value = null
-    backupShards.value = []
+    // backupShards.value = []
+    backups.bob.value = null
+    backups.carol.value = null
+    backups.desmond.value = null
     isValid.value = false
     errorMessage.value = null
     currentStep.value = 'idle'
@@ -321,10 +324,6 @@ function Example () {
                 <p>
                     <strong>Key Packages Created: </strong>
                     ${keyGenResult.value.keyPackages.length}
-                </p>
-                <p>
-                    <strong>Backup Shards: </strong>
-                    ${backupShards.value.length} (Bob, Carol)
                 </p>
             </div>
         `}
