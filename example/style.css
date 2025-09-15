@@ -57,13 +57,26 @@
     margin-bottom: 10px;
 }
 
+.shard-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+}
+
 .shard-box {
     width: 24px;
     height: 24px;
     border: 2px solid #333;
     border-radius: 4px;
-    margin: 0 auto;
     transition: background-color 0.3s ease;
+}
+
+.shard-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
 }
 
 .shard-box.no-shard {
@@ -73,6 +86,24 @@
 .shard-box.has-shard {
     background-color: #4caf50;
     border-color: #388e3c;
+}
+
+.recovery-selection {
+    margin-top: 10px;
+}
+
+.recovery-selection label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #666;
+    cursor: pointer;
+}
+
+.recovery-selection input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
 }
 
 .status-indicators {

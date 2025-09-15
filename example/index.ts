@@ -31,6 +31,11 @@ const backups = {
     carol: signal<null|KeyPackage>(null),
     desmond: signal<null|KeyPackage>(null)
 }
+const selectedForRecovery = {
+    bob: signal(false),
+    carol: signal(false),
+    desmond: signal(false)
+}
 
 // Computed values
 const participantCount = computed<number>(() => {
@@ -38,6 +43,9 @@ const participantCount = computed<number>(() => {
 })
 const threshold = computed<number>(() => config.value.minSigners)
 const messageLength = computed<number>(() => 'Alice\'s important message'.length)
+const selectedCount = computed<number>(() => {
+    return Object.values(selectedForRecovery).filter(s => s.value).length
+})
 
 async function backupKey () {
     if (isRunning.value) return
@@ -91,10 +99,7 @@ async function recoverKey () {
     if (
         isRunning.value ||
         !isBackedUp.value ||
-        // backupShards.value.length === 0
-        Object.values(backups).reduce((acc, backup) => {
-            return !!(backup.value && acc)
-        }, true)
+        selectedCount.value !== 2
     ) return
 
     try {
@@ -103,17 +108,26 @@ async function recoverKey () {
         errorMessage.value = null
         currentStep.value = 'Starting key recovery'
 
-        // Use the backup shards to recover the key
-        console.log('Starting key recovery using backup shards...')
-        // const participants = backupShards.value
-        const participants = Object.values(backups)
-            .map(sig => sig.value)
+        // Use the selected backup shards to recover the key
+        console.log('Starting key recovery using selected backup shards...')
+        const selectedParticipants = Object.entries(selectedForRecovery)
+            .filter(([_, selected]) => selected.value)
+            .map(([name, _]) => backups[name as keyof typeof backups].value)
             .filter(Boolean)
+
+        if (selectedParticipants.length !== 2) {
+            throw new Error('Exactly 2 participants must be selected for recovery')
+        }
+
+        const participants = selectedParticipants
         const signers = participants.map(pkg => {
             return new FrostSigner(pkg, config.value)
         })
         const coordinator = new FrostCoordinator(config.value)
-        console.log('   - Using Bob and Carol\'s backup shards')
+        const selectedNames = Object.entries(selectedForRecovery)
+            .filter(([_, selected]) => selected.value)
+            .map(([name, _]) => name.charAt(0).toUpperCase() + name.slice(1))
+        console.log(`   - Using ${selectedNames.join(' and ')}'s backup shards`)
 
         currentStep.value = 'Running FROST recovery ceremony'
 
@@ -190,6 +204,9 @@ function resetDemo () {
     backups.bob.value = null
     backups.carol.value = null
     backups.desmond.value = null
+    selectedForRecovery.bob.value = false
+    selectedForRecovery.carol.value = false
+    selectedForRecovery.desmond.value = false
     isValid.value = false
     errorMessage.value = null
     currentStep.value = 'idle'
@@ -234,17 +251,62 @@ function Example () {
                 <div class="participant bob">
                     <h4>Bob</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-container">
+                        <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                        <span class="shard-label">Backup</span>
+                    </div>
+                    ${isBackedUp.value && !isRecovered.value && html`
+                        <div class="recovery-selection">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked=${selectedForRecovery.bob.value}
+                                    onChange=${(e) => selectedForRecovery.bob.value = e.target.checked}
+                                />
+                                Use for recovery
+                            </label>
+                        </div>
+                    `}
                 </div>
                 <div class="participant carol">
                     <h4>Carol</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-container">
+                        <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                        <span class="shard-label">Backup</span>
+                    </div>
+                    ${isBackedUp.value && !isRecovered.value && html`
+                        <div class="recovery-selection">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked=${selectedForRecovery.carol.value}
+                                    onChange=${(e) => selectedForRecovery.carol.value = e.target.checked}
+                                />
+                                Use for recovery
+                            </label>
+                        </div>
+                    `}
                 </div>
                 <div class="participant desmond">
                     <h4>Desmond</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-container">
+                        <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
+                        <span class="shard-label">Backup</span>
+                    </div>
+                    ${isBackedUp.value && !isRecovered.value && html`
+                        <div class="recovery-selection">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked=${selectedForRecovery.desmond.value}
+                                    onChange=${(e) => selectedForRecovery.desmond.value = e.target.checked}
+                                />
+                                Use for recovery
+                            </label>
+                        </div>
+                    `}
                 </div>
             </div>
         </div>
@@ -278,10 +340,10 @@ function Example () {
 
             <button
                 onClick=${recoverKey}
-                disabled=${isRunning.value || !isBackedUp.value || isRecovered.value}
-                class="btn ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 'disabled' : 'success'}"
+                disabled=${isRunning.value || !isBackedUp.value || isRecovered.value || selectedCount.value !== 2}
+                class="btn ${(isRunning.value || !isBackedUp.value || isRecovered.value || selectedCount.value !== 2) ? 'disabled' : 'success'}"
             >
-                ${isRecovered.value ? 'Key Recovered' : 'Recover Key'}
+                ${isRecovered.value ? 'Key Recovered' : `Recover Key (${selectedCount.value}/2 selected)`}
             </button>
 
             <button
