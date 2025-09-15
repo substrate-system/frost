@@ -7,7 +7,8 @@ import {
     type SignatureShare
 } from '../src/index.js'
 
-console.log('FROST Example: Alice creates a keypair using @substrate-system/keys, then Bob and Carl help recover it\n')
+console.log('FROST Example: Alice creates a keypair using ' +
+    '@substrate-system/keys, then Bob and Carol help recover it\n')
 
 // Step 1: Alice creates her Ed25519 keypair using @substrate-system/keys
 console.log('1. Alice creates her Ed25519 keypair using @substrate-system/keys')
@@ -22,16 +23,17 @@ const dealer = new TrustedDealer(config)
 const { groupPublicKey, keyPackages } = dealer.generateKeys()
 
 // Name the participants
-const [_aliceKey, bobKey, carlKey, desmondKey] = keyPackages
-console.log('   - Alice, Bob, Carl, and Desmond each get a key share')
+const [_aliceKey, bobKey, carolKey, desmondKey] = keyPackages
+console.log('   - Alice, Bob, Carold, and Desmond each get a key share')
 console.log(`   - Group public key: ${groupPublicKey.point.slice(0, 8).join('')}...`)
 
 // Step 2: Later, Alice needs to recover her key using 3 of the 4 shares
 console.log('\n2. Alice needs to recover her keypair using 3 participants')
-const participants = [bobKey, carlKey, desmondKey] // Using Bob, Carl, and Desmond
+// Using Bob, Carol, and Desmond
+const participants = [bobKey, carolKey, desmondKey]
 const signers = participants.map(pkg => new FrostSigner(pkg, config))
 const coordinator = new FrostCoordinator(config)
-console.log('   - Bob, Carl, and Desmond will help recover Alice\'s key')
+console.log('   - Bob, Carol, and Desmond will help recover Alice\'s key')
 
 // Step 3: FROST signing ceremony (this demonstrates the key recovery)
 console.log('\n3. Running FROST signing ceremony to prove key recovery')
@@ -65,7 +67,7 @@ const finalSignature = coordinator.aggregateSignatures(signingPackage, signature
 const valid = await coordinator.verify(finalSignature, message, groupPublicKey)
 
 console.log('\n4. Results:')
-console.log('   - Signature created using Bob, Carl, and Desmond\'s shares')
+console.log('   - Signature created using Bob, Carol, and Desmond\'s shares')
 console.log(`   - Signature valid: ${valid}`)
 console.log('   - This proves Alice\'s key can be recovered with any 3 of the 4 shares')
 

@@ -48,7 +48,8 @@ npm install @substrate-system/frost
 
 ## Example
 
-A simple scenario: Alice creates a keypair, then recovers it using help from Bob, Carl, and Desmond.
+A simple scenario: Alice creates a keypair, then recovers it using help from
+Bob, Carol, and Desmond.
 
 ```ts
 import {
@@ -64,10 +65,10 @@ const dealer = new TrustedDealer(config)
 const { groupPublicKey, keyPackages } = dealer.generateKeys()
 
 // Name the participants
-const [aliceKey, bobKey, carlKey, desmondKey] = keyPackages
+const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages
 
-// 2. Later, Alice recovers her key using Bob, Carl, and Desmond
-const participants = [bobKey, carlKey, desmondKey]
+// 2. Later, Alice recovers her key using Bob, Carol, and Desmond
+const participants = [bobKey, carolKey, desmondKey]
 const signers = participants.map(pkg => new FrostSigner(pkg, config))
 const coordinator = new FrostCoordinator(config)
 
@@ -86,7 +87,7 @@ npm run example:node
 
 This will execute the complete example showing:
 1. Alice creating a 3-of-4 threshold keypair
-2. Getting key shares for Alice, Bob, Carl, and Desmond
+2. Getting key shares for Alice, Bob, Carol, and Desmond
 3. Using any 3 participants to recover Alice's signing capability
 4. Verifying the recovery worked by creating a valid signature
 
@@ -238,8 +239,8 @@ const config = createFrostConfig(3, 4) // Need 3 out of 4 to recover
 const dealer = new TrustedDealer(config)
 const { groupPublicKey, keyPackages } = dealer.generateKeys()
 
-// Distribute key shares to Alice, Bob, Carl, and Desmond
-const [aliceKey, bobKey, carlKey, desmondKey] = keyPackages
+// Distribute key shares to Alice, Bob, Carol, and Desmond
+const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages
 ```
 
 #### Step 2: Alice Needs to Recover Her Key
@@ -247,8 +248,8 @@ const [aliceKey, bobKey, carlKey, desmondKey] = keyPackages
 Later, Alice wants to use her key but needs help from 3 of her 4 trusted friends:
 
 ```ts
-// Alice chooses Bob, Carl, and Desmond to help (any 3 would work)
-const participants = [bobKey, carlKey, desmondKey]
+// Alice chooses Bob, Carol, and Desmond to help (any 3 would work)
+const participants = [bobKey, carolKey, desmondKey]
 const signers = participants.map(pkg => new FrostSigner(pkg, config))
 const coordinator = new FrostCoordinator(config)
 ```

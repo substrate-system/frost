@@ -85,7 +85,7 @@ async function recoverKey () {
         const participants = backupShards.value
         const signers = participants.map(pkg => new FrostSigner(pkg, config.value))
         const coordinator = new FrostCoordinator(config.value)
-        console.log('   - Using Bob and Carl\'s backup shards')
+        console.log('   - Using Bob and Carol\'s backup shards')
 
         currentStep.value = 'Running FROST recovery ceremony'
 
@@ -173,33 +173,36 @@ function Example () {
             <h3>Secure Key Management with @substrate-system/keys + FROST</h3>
             <p><strong>Keys:</strong> Ed25519 keypair created with @substrate-system/keys (extractable)</p>
             <p><strong>Backup:</strong> ${threshold.value}-of-${participantCount.value} threshold backup system using FROST</p>
-            <p><strong>Participants:</strong> Alice (owner), Bob, Carl (backup holders)</p>
+            <p>
+                <strong>Participants:</strong> Alice (owner), Bob, Carol
+                (backup holders)
+            </p>
             <p><strong>Cipher Suite:</strong> ${config.value.cipherSuite.name}</p>
         </div>
 
         <!-- Key Status Indicators -->
-        <div style="display: flex; gap: 20px; margin: 20px 0;">
-            <div style="background: ${isBackedUp.value ? '#d1ecf1' : '#e2e3e5'}; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border: 2px solid ${isBackedUp.value ? '#bee5eb' : '#d1d3d4'};">
-                <h4 style="margin: 0; color: ${isBackedUp.value ? '#0c5460' : '#495057'};">Key Backup</h4>
-                <p style="margin: 5px 0; font-weight: bold; color: ${isBackedUp.value ? '#0c5460' : '#6c757d'};">
+        <div class="status-indicators">
+            <div class="status-card ${isBackedUp.value ? 'backed-up' : 'not-backed-up'}">
+                <h4>Key Backup</h4>
+                <p>
                     ${isBackedUp.value ? 'BACKED UP' : 'NOT BACKED UP'}
                 </p>
             </div>
 
-            <div style="background: ${isRecovered.value ? '#d1ecf1' : '#e2e3e5'}; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border: 2px solid ${isRecovered.value ? '#bee5eb' : '#d1d3d4'};">
-                <h4 style="margin: 0; color: ${isRecovered.value ? '#0c5460' : '#495057'};">Key Recovery</h4>
-                <p style="margin: 5px 0; font-weight: bold; color: ${isRecovered.value ? '#0c5460' : '#6c757d'};">
+            <div class="status-card ${isRecovered.value ? 'backed-up' : 'not-backed-up'}">
+                <h4>Key Recovery</h4>
+                <p>
                     ${isRecovered.value ? 'RECOVERED' : 'NOT RECOVERED'}
                 </p>
             </div>
         </div>
 
         <!-- Action Buttons -->
-        <div style="display: flex; gap: 15px; margin: 20px 0;">
+        <div class="action-buttons">
             <button
                 onClick=${backupKey}
                 disabled=${isRunning.value || isBackedUp.value}
-                style="padding: 12px 24px; background: ${isBackedUp.value ? '#6c757d' : '#007acc'}; color: white; border: none; border-radius: 6px; cursor: ${(isRunning.value || isBackedUp.value) ? 'not-allowed' : 'pointer'}; opacity: ${(isRunning.value || isBackedUp.value) ? 0.6 : 1}; font-weight: bold;"
+                class="btn ${(isRunning.value || isBackedUp.value) ? 'disabled' : 'primary'}"
             >
                 ${isBackedUp.value ? 'Key Backed Up' : 'Backup Key'}
             </button>
@@ -207,7 +210,7 @@ function Example () {
             <button
                 onClick=${recoverKey}
                 disabled=${isRunning.value || !isBackedUp.value || isRecovered.value}
-                style="padding: 12px 24px; background: ${!isBackedUp.value || isRecovered.value ? '#6c757d' : '#28a745'}; color: white; border: none; border-radius: 6px; cursor: ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 'not-allowed' : 'pointer'}; opacity: ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 0.6 : 1}; font-weight: bold;"
+                class="btn ${(isRunning.value || !isBackedUp.value || isRecovered.value) ? 'disabled' : 'success'}"
             >
                 ${isRecovered.value ? 'Key Recovered' : 'Recover Key'}
             </button>
@@ -215,48 +218,51 @@ function Example () {
             <button
                 onClick=${resetDemo}
                 disabled=${isRunning.value}
-                style="padding: 12px 24px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: ${isRunning.value ? 'not-allowed' : 'pointer'}; opacity: ${isRunning.value ? 0.6 : 1}; font-weight: bold;"
+                class="btn ${isRunning.value ? 'disabled' : 'danger'}"
             >
                 Reset Demo
             </button>
         </div>
 
         ${currentStep.value !== 'idle' && html`
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-                <h3 style="margin-top: 0;">Current Status</h3>
+            <div class="status-section">
+                <h3>Current Status</h3>
                 <p><strong>Operation:</strong> ${currentOperation.value || 'None'}</p>
                 <p><strong>Step:</strong> ${currentStep.value}</p>
-                ${isRunning.value && html`<p style="color: #666;">Processing...</p>`}
+                ${isRunning.value && html`<p class="processing-text">Processing...</p>`}
             </div>
         `}
 
         ${errorMessage.value && html`
-            <div style="background: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #f5c6cb; border-left: 4px solid #dc3545;">
-                <h3 style="color: #721c24; margin-top: 0;">Error</h3>
-                <p style="color: #721c24;">${errorMessage.value}</p>
+            <div class="error-section">
+                <h3>Error</h3>
+                <p>${errorMessage.value}</p>
             </div>
         `}
 
         ${keyGenResult.value && html`
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-                <h3 style="margin-top: 0;">Key Generation Results</h3>
-                <p><strong>Participants:</strong> Alice (owner), Bob, Carl (backup holders)</p>
+            <div class="key-results">
+                <h3>Key Generation Results</h3>
+                <p>
+                    <strong>Participants:</strong> Alice (owner), Bob, Carol
+                    (backup holders)
+                </p>
                 <p><strong>Group Public Key:</strong> ${keyGenResult.value.groupPublicKey.point.slice(0, 8).join('')}...</p>
                 <p><strong>Key Packages Created:</strong> ${keyGenResult.value.keyPackages.length}</p>
-                <p><strong>Backup Shards:</strong> ${backupShards.value.length} (Bob, Carl)</p>
+                <p><strong>Backup Shards:</strong> ${backupShards.value.length} (Bob, Carol)</p>
             </div>
         `}
 
         ${finalSignature.value && html`
-            <div style="background: ${isValid.value ? '#d1ecf1' : '#f8d7da'}; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${isValid.value ? '#17a2b8' : '#dc3545'};">
-                <h3 style="margin-top: 0;">Recovery Verification</h3>
+            <div class="verification-section ${isValid.value ? 'valid' : 'invalid'}">
+                <h3>Recovery Verification</h3>
                 <p><strong>Test Message:</strong>
                 "Alice's important message" (${messageLength.value} bytes)</p>
                 <p><strong>Signature Valid:</strong> ${isValid.value ? 'Yes' : 'No'}</p>
                 <p><strong>R Component:</strong> ${finalSignature.value.R.point.length} bytes</p>
                 <p><strong>z Component:</strong> ${finalSignature.value.z.value.length} bytes</p>
                 ${isValid.value && html`
-                    <p style="color: #155724; font-weight: bold; background: #d4edda; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                    <p class="success-message">
                         Success! Alice's key was successfully recovered using
                         the backup shards from Bob and Carol.
                     </p>
@@ -264,8 +270,8 @@ function Example () {
             </div>
         `}
 
-        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <h3 style="margin-top: 0;">How It Works</h3>
+        <div class="info-section">
+            <h3>How It Works</h3>
             <p>This demonstrates secure key management combining <strong>@substrate-system/keys</strong> with <strong>FROST</strong> signatures:</p>
             <ul>
                 <li><strong>Key Creation:</strong> Alice generates Ed25519 keypair using @substrate-system/keys (extractable for backup)</li>
@@ -275,8 +281,8 @@ function Example () {
             </ul>
         </div>
 
-        <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
-            <h3 style="margin-top: 0;">FROST Protocol Steps</h3>
+        <div class="protocol-section">
+            <h3>FROST Protocol Steps</h3>
             <ol>
                 <li><strong>Key Generation:</strong> Create ${threshold.value}-of-${participantCount.value} threshold setup</li>
                 <li><strong>Distribution:</strong> Share key packages with backup holders</li>
@@ -287,7 +293,7 @@ function Example () {
             </ol>
         </div>
 
-        <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">
+        <p class="footer-text">
             Check the browser console for detailed logging of the FROST protocol execution.
         </p>
     </div>
