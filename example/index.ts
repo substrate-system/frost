@@ -11,18 +11,26 @@ import {
     type FrostSignature,
 } from '../src/index.js'
 
+const NBSP = '\u00A0'
+
 // State signals
 const isRunning = signal(false)
 const currentStep = signal('idle')
-const config = signal(createFrostConfig(2, 3)) // Use working 2-of-3 threshold
-const keyGenResult = signal<TrustedDealerOutput | null>(null)
-const finalSignature = signal<FrostSignature | null>(null)
+const config = signal(createFrostConfig(2, 3))  // 2-of-3 threshold
+const keyGenResult = signal<TrustedDealerOutput|null>(null)
+const finalSignature = signal<FrostSignature|null>(null)
 const isValid = signal(false)
-const errorMessage = signal<string | null>(null)
+const errorMessage = signal<string|null>(null)
 const isBackedUp = signal(false)
 const isRecovered = signal(false)
 const backupShards = signal<any[]>([])
-const currentOperation = signal<'backup' | 'recovery' | null>(null)
+const currentOperation = signal<'backup'|'recovery'|null>(null)
+
+const backups = {
+    bob: signal<null|TrustedDealerOutput>(null),
+    carole: signal<null|TrustedDealerOutput>(null),
+    desmond: signal<null|TrustedDealerOutput>(null)
+}
 
 // Computed values
 const participantCount = computed<number>(() => {
@@ -41,7 +49,8 @@ async function backupKey () {
         currentStep.value = 'Creating keys and FROST backup setup'
 
         // Step 1: Alice creates her keypair using @substrate-system/keys
-        console.log('1. Alice creates keys using @substrate-system/keys (extractable for backup)')
+        console.log('1. Alice creates keys using @substrate-system/keys' +
+            ' (extractable for backup)')
 
         // not session, extractable for backup
         const aliceKeys = await EccKeys.create(false, true)
@@ -54,7 +63,8 @@ async function backupKey () {
         const keyGen = dealer.generateKeys()
         keyGenResult.value = keyGen
 
-        // Name the participants and store backup shards (take 2 out of 3 for backup)
+        // Name the participants and store backup shards
+        // (take 2 out of 3 for recovery)
         const [_aliceKey, bobKey, carolKey] = keyGen.keyPackages
         backupShards.value = [bobKey, carolKey]
         console.log('   - Alice creates backup shards for Bob and Carol')
@@ -62,7 +72,8 @@ async function backupKey () {
         currentStep.value = 'Backup created successfully'
         isBackedUp.value = true
 
-        console.log('\\nBackup complete! Key has been distributed to 2 trusted participants.')
+        console.log('\\nBackup complete! Key has been distributed to' +
+            ' 2 trusted participants.')
     } catch (error) {
         console.error('FROST backup failed:', error)
         errorMessage.value = error instanceof Error ? error.message : 'Unknown error'
@@ -194,6 +205,32 @@ function Example () {
             <p><strong>Cipher Suite:</strong> ${config.value.cipherSuite.name}</p>
         </div>
 
+        <!-- Participants Display -->
+        <div class="participants-section">
+            <h3>Participants</h3>
+            <div class="participants-grid">
+                <div class="participant alice">
+                    <h4>Alice</h4>
+                    <p>Owner</p>
+                </div>
+                <div class="participant bob">
+                    <h4>Bob</h4>
+                    <p>Backup Holder</p>
+                    <div class="shard-box ${backups.bob.value ? 'has-shard' : 'no-shard'}"></div>
+                </div>
+                <div class="participant carol">
+                    <h4>Carol</h4>
+                    <p>Backup Holder</p>
+                    <div class="shard-box ${backups.carole.value ? 'has-shard' : 'no-shard'}"></div>
+                </div>
+                <div class="participant desmond">
+                    <h4>Desmond</h4>
+                    <p>Backup Holder</p>
+                    <div class="shard-box ${backups.desmond.value ? 'has-shard' : 'no-shard'}"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Key Status Indicators -->
         <div class="status-indicators">
             <div class="status-card ${isBackedUp.value ? 'backed-up' : 'not-backed-up'}">
@@ -305,9 +342,12 @@ function Example () {
 
         <div class="info-section">
             <h3>How It Works</h3>
-            <p>This demonstrates secure key management combining
-                <strong>@substrate-system/keys</strong> with
-                <strong>FROST</strong> signatures:</p>
+            <p>
+                This demonstrates secure key management combining <strong>
+                    @substrate-system/keys
+                </strong> with <strong>
+                    FROST
+                </strong> signatures:</p>
             <ul>
                 <li>
                     <strong>Key Creation: </strong>
@@ -316,8 +356,8 @@ function Example () {
                 </li>
                 <li>
                     <strong>Backup: </strong>
-                    FROST creates a
-                    ${threshold.value}-of-${participantCount.value}
+                    FROST creates a${NBSP}
+                    ${threshold.value}-of-${participantCount.value}${NBSP}
                     threshold setup, distributing key shares to
                     trusted participants
                 </li>
@@ -340,7 +380,7 @@ function Example () {
                 <li>
                     <strong>Key Generation:</strong>
                     Create ${threshold.value}-of-${participantCount.value}
-                    threshold setup
+                    ${NBSP}threshold setup
                 </li>
                 <li>
                     <strong>Distribution: </strong>
@@ -364,8 +404,7 @@ function Example () {
         </div>
 
         <p class="footer-text">
-            Check the browser console for detailed logging of the FROST
-            protocol execution.
+            Check the browser console for additional logs.
         </p>
     </div>
   `
