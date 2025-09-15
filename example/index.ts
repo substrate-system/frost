@@ -9,6 +9,7 @@ import {
     FrostSigner,
     type TrustedDealerOutput,
     type FrostSignature,
+    type KeyPackage,
 } from '../src/index.js'
 
 const NBSP = '\u00A0'
@@ -17,19 +18,18 @@ const NBSP = '\u00A0'
 const isRunning = signal(false)
 const currentStep = signal('idle')
 const config = signal(createFrostConfig(2, 3))  // 2-of-3 threshold
-const keyGenResult = signal<TrustedDealerOutput|null>(null)
-const finalSignature = signal<FrostSignature|null>(null)
+const keyGenResult = signal<TrustedDealerOutput | null>(null)
+const finalSignature = signal<FrostSignature | null>(null)
 const isValid = signal(false)
-const errorMessage = signal<string|null>(null)
+const errorMessage = signal<string | null>(null)
 const isBackedUp = signal(false)
 const isRecovered = signal(false)
-const backupShards = signal<any[]>([])
-const currentOperation = signal<'backup'|'recovery'|null>(null)
-
+// const backupShards = signal<any[]>([])
+const currentOperation = signal<'backup' | 'recovery' | null>(null)
 const backups = {
-    bob: signal<null|TrustedDealerOutput>(null),
-    carole: signal<null|TrustedDealerOutput>(null),
-    desmond: signal<null|TrustedDealerOutput>(null)
+    bob: signal<null|KeyPackage>(null),
+    carol: signal<null|KeyPackage>(null),
+    desmond: signal<null|KeyPackage>(null)
 }
 
 // Computed values
@@ -65,8 +65,11 @@ async function backupKey () {
 
         // Name the participants and store backup shards
         // (take 2 out of 3 for recovery)
-        const [_aliceKey, bobKey, carolKey] = keyGen.keyPackages
-        backupShards.value = [bobKey, carolKey]
+        const [bobKey, carolKey, desmondKey] = keyGen.keyPackages
+        // backupShards.value = [bobKey, carolKey]
+        backups.bob.value = bobKey
+        backups.carol.value = carolKey
+        backups.desmond.value = desmondKey
         console.log('   - Alice creates backup shards for Bob and Carol')
 
         currentStep.value = 'Backup created successfully'
@@ -85,7 +88,14 @@ async function backupKey () {
 }
 
 async function recoverKey () {
-    if (isRunning.value || !isBackedUp.value || backupShards.value.length === 0) return
+    if (
+        isRunning.value ||
+        !isBackedUp.value ||
+        // backupShards.value.length === 0
+        Object.values(backups).reduce((acc, backup) => {
+            return !!(backup.value && acc)
+        }, true)
+    ) return
 
     try {
         isRunning.value = true
@@ -95,8 +105,13 @@ async function recoverKey () {
 
         // Use the backup shards to recover the key
         console.log('Starting key recovery using backup shards...')
-        const participants = backupShards.value
-        const signers = participants.map(pkg => new FrostSigner(pkg, config.value))
+        // const participants = backupShards.value
+        const participants = Object.values(backups)
+            .map(sig => sig.value)
+            .filter(Boolean)
+        const signers = participants.map(pkg => {
+            return new FrostSigner(pkg, config.value)
+        })
         const coordinator = new FrostCoordinator(config.value)
         console.log('   - Using Bob and Carol\'s backup shards')
 
@@ -216,17 +231,17 @@ function Example () {
                 <div class="participant bob">
                     <h4>Bob</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${backups.bob.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
                 </div>
                 <div class="participant carol">
                     <h4>Carol</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${backups.carole.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
                 </div>
                 <div class="participant desmond">
                     <h4>Desmond</h4>
                     <p>Backup Holder</p>
-                    <div class="shard-box ${backups.desmond.value ? 'has-shard' : 'no-shard'}"></div>
+                    <div class="shard-box ${isBackedUp.value ? 'has-shard' : 'no-shard'}"></div>
                 </div>
             </div>
         </div>
