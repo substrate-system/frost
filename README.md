@@ -59,7 +59,6 @@ _Featuring:_
 - [Types](#types)
   * [Core Types](#core-types)
   * [Protocol Types](#protocol-types)
-- [Security Considerations](#security-considerations)
   * [Security Features](#security-features)
   * [Production Considerations](#production-considerations)
 - [Testing](#testing)
