@@ -92,7 +92,6 @@ section.section {
     flex: 1;
     padding: 15px;
     border: 2px solid #ddd;
-    border-radius: 8px;
     position: relative;
     overflow: hidden;
     background-color: #f5f5f5;
@@ -270,7 +269,6 @@ section.section {
     padding: 15px;
     margin: 20px 0;
     border-left: 4px solid #6c757d;
-    border-radius: 4px;
 }
 
 .key-comparison-section h3 {
@@ -287,7 +285,6 @@ section.section {
 .key-info {
     background: #fff;
     padding: 12px;
-    border-radius: 4px;
     border: 1px solid #dee2e6;
 }
 
@@ -305,7 +302,6 @@ section.section {
 
 .comparison-result {
     padding: 12px;
-    border-radius: 4px;
     margin-top: 15px;
 }
 
@@ -367,7 +363,6 @@ section.section {
     padding: 20px;
     margin: 20px 0;
     border-left: 4px solid #007acc;
-    border-radius: 4px;
 }
 
 .verification-form {
@@ -390,7 +385,6 @@ section.section {
 .message-input {
     padding: 8px 12px;
     border: 2px solid #dee2e6;
-    border-radius: 4px;
     font-family: monospace;
     font-size: 14px;
 }
@@ -425,7 +419,6 @@ section.section {
 .signature-display {
     background: #e9ecef;
     padding: 15px;
-    border-radius: 4px;
     border: 1px solid #ced4da;
 }
 
@@ -444,13 +437,11 @@ section.section {
     margin: 8px 0;
     padding: 8px;
     background: #fff;
-    border-radius: 2px;
     border: 1px solid #dee2e6;
 }
 
 .verification-result {
     padding: 15px;
-    border-radius: 4px;
     border: 2px solid;
 }
 

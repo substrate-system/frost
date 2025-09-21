@@ -10,19 +10,16 @@ body {
 .container {
     background: white;
     padding: 3rem;
-    border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
-    color: #2563eb;
-    border-bottom: 3px solid #e5e7eb;
+    border-bottom: 2px solid gray;
     padding-bottom: 1rem;
     margin-bottom: 2rem;
 }
 
 .description {
-    color: #6b7280;
     font-size: 1.1rem;
     margin-bottom: 3rem;
 }
@@ -37,7 +34,6 @@ h1 {
 .link-card {
     background: #f8fafc;
     border: 2px solid #e2e8f0;
-    border-radius: 8px;
     padding: 2rem;
     text-decoration: none;
     color: inherit;
@@ -51,20 +47,12 @@ h1 {
 }
 
 .link-card h2 {
-    color: #2563eb;
     margin-top: 0;
     margin-bottom: 1rem;
 }
 
 .link-card p {
-    color: #6b7280;
     margin: 0;
-}
-
-.features {
-    margin-top: 3rem;
-    padding-top: 2rem;
-    border-top: 1px solid #e5e7eb;
 }
 
 .features ul {
@@ -78,10 +66,5 @@ h1 {
 .features li {
     background: #ecfdf5;
     padding: 1rem;
-    border-radius: 6px;
     border-left: 4px solid #10b981;
-}
-
-.features strong {
-    color: #065f46;
 }
