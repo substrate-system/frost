@@ -249,9 +249,9 @@ const signature = coordinator.aggregateSignatures(
 
 ## Step-by-Step Guide
 
-### Complete Example: Alice's Threshold Signing
+### Example
 
-Here's how Alice can create a threshold keypair and later create signatures
+Alice can create a threshold keypair and later create signatures
 with her trusted friends.
 
 #### Step 1: Alice Creates the Initial Setup
@@ -265,25 +265,26 @@ import {
 } from '@substrate-system/frost'
 
 // Alice decides she wants a 3-of-4 threshold scheme
-const config = createFrostConfig(3, 4) // Need 3 out of 4 to sign
+const config = createFrostConfig(3, 4)  // Need 3 out of 4 to sign
 const { groupPublicKey, keyPackages } = generateKeys(config)
 
 // Distribute key shares to Alice, Bob, Carol, and Desmond
 const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages
 ```
 
-#### Step 2: Alice Needs to Create a Signature
+#### Step 2: Create a Signature
 
-Later, Alice wants to sign a message but needs help from 3 of her 4 trusted friends:
+Later, Alice wants to sign a message but needs help from 3 of her 4
+trusted friends:
 
 ```ts
-// Alice chooses Bob, Carol, and Desmond to help (any 3 would work)
-const participants = [bobKey, carolKey, desmondKey]
+// Alice chooses Carol and Desmond to help (any 3 would work)
+const participants = [aliceKey, carolKey, desmondKey]
 const signers = participants.map(pkg => new FrostSigner(pkg, config))
 const coordinator = new FrostCoordinator(config)
 ```
 
-#### Step 3: The FROST Signing Ceremony
+#### Step 3: Sign
 
 This process creates a threshold signature:
 
@@ -313,23 +314,24 @@ for (let i = 0; i < signers.length; i++) {
 }
 
 // Combine into final signature
-const finalSignature = coordinator.aggregateSignatures(signingPackage, signatureShares)
+const finalSignature = coordinator.aggregateSignatures(
+  signingPackage,
+  signatureShares
+)
 
 // Verify it worked
 const valid = await coordinator.verify(finalSignature, message, groupPublicKey)
-console.log('Threshold signature valid:', valid) // Should be true
+console.log('Threshold signature valid:', valid)  // Should be true
 ```
 
-### Key Benefits
+The signature is mathematically equivalent to a single-key signature
 
-- **Threshold Security**: Only needs 3 out of 4 participants to create signatures
-- **No Single Point of Failure**: Signing works even if 1 participant is unavailable
-- **Distributed Trust**: No single participant ever has access to the complete private key
-- **Cryptographic Proof**: The signature is mathematically equivalent to a single-key signature
 
 ## Types
 
-### Core Types
+```ts
+import * as types from '@substrate-system/frost/types'
+```
 
 - `ParticipantId`: Identifies a participant in the protocol
 - `Scalar`: Represents a scalar value in the cryptographic group
@@ -343,19 +345,19 @@ console.log('Threshold signature valid:', valid) // Should be true
 - `RoundOneOutputs`: Nonces and commitments from round 1
 - `RoundTwoOutputs`: Signature share from round 2
 
-### Security Features
+## Security
 
-**Secure Random Generation**: Uses `crypto.getRandomValues()` for entropy
-**Proper Ed25519 Operations**: Leverages proven ECC library implementations
-**SHA-512 Hashing**: Uses Web Crypto API for secure hash operations
-**Field Arithmetic**: Proper scalar operations modulo the Ed25519 field order
+**Secure Random Generation**: `crypto.getRandomValues()` for entropy
+**SHA-512 Hashing**: Web Crypto API for secure hash operations
 
-### Production Considerations
+
+## Production Considerations
 
 1. **Secure Communication**: Ensure secure channels between participants
 2. **Input Validation**: All inputs are validated for correct length and format
 3. **Error Handling**: Comprehensive error handling for cryptographic failures
-4. **Side-Channel Protection**: Consider timing attack mitigations for sensitive operations
+4. **Side-Channel Protection**: Consider timing attack mitigations for
+   sensitive operations
 5. **Key Management**: Implement secure storage and distribution of key packages
 
 ## Testing
@@ -380,24 +382,18 @@ Build the library:
 npm run build
 ```
 
-This generates both CommonJS and ES module outputs in the `dist/` directory.
+This generates both CommonJS and ES modules in the `dist/` directory.
 
 ## Standards Compliance
 
 This implementation follows:
 
-- [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html) - The Flexible Round-Optimized Schnorr Threshold (FROST) Protocol
-- Ed25519 signature scheme specifications
-- Modern TypeScript/ES2022 standards
+- [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html) - The Flexible
+  Round-Optimized Schnorr Threshold (FROST) Protocol
+- Ed25519 signature
 
-## Contributing
 
-1. Ensure all tests pass: `npm test`
-2. Follow the existing code style
-3. Add tests for new functionality
-4. Update documentation as needed
-
-## References
+## See Also
 
 - [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
 - [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
