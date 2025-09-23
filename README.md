@@ -54,18 +54,15 @@ _Featuring:_
   * [1. Key Generation (Setup)](#1-key-generation-setup)
   * [2. Signing Ceremony](#2-signing-ceremony)
 - [Step-by-Step Guide](#step-by-step-guide)
-  * [Complete Example: Alice's Threshold Signing](#complete-example-alices-threshold-signing)
-  * [Key Benefits](#key-benefits)
+  * [Example](#example-1)
 - [Types](#types)
-  * [Core Types](#core-types)
   * [Protocol Types](#protocol-types)
-  * [Security Features](#security-features)
-  * [Production Considerations](#production-considerations)
+- [Security](#security)
+- [Production Considerations](#production-considerations)
 - [Testing](#testing)
 - [Building](#building)
 - [Standards Compliance](#standards-compliance)
-- [Contributing](#contributing)
-- [References](#references)
+- [See Also](#see-also)
 
 <!-- tocstop -->
 

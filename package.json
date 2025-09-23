@@ -1,6 +1,6 @@
 {
   "name": "@substrate-system/frost",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "FROST signatures",
   "type": "module",
   "exports": {
