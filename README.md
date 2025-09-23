@@ -85,15 +85,14 @@ signatures with help from Bob, Carol, and Desmond.
 ```ts
 import {
     createFrostConfig,
-    TrustedDealer,
+    generateKeys,
     FrostCoordinator,
     FrostSigner
 } from '@substrate-system/frost'
 
 // 1. Alice creates a 3-of-4 FROST setup
 const config = createFrostConfig(3, 4)  // Need 3 out of 4 to sign
-const dealer = new TrustedDealer(config)
-const { groupPublicKey, keyPackages } = dealer.generateKeys()
+const { groupPublicKey, keyPackages } = generateKeys(config)
 
 // Name the participants
 const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages
@@ -140,13 +139,12 @@ const config = createFrostConfig(3, 5)  // 3-of-5 threshold
 
 ### Key Generation
 
-#### `TrustedDealer`
+#### `generateKeys(config: FrostConfig)`
 
-Handles key generation using the trusted dealer approach.
+Generates keys for all participants.
 
 ```ts
-const dealer = new TrustedDealer(config)
-const keyGenResult = dealer.generateKeys()
+const keyGenResult = generateKeys(config)
 
 // Result contains:
 // - groupPublicKey: The collective public key
@@ -208,9 +206,8 @@ The FROST protocol consists of the following phases:
 ### 1. Key Generation (Setup)
 
 ```ts
-// Trusted dealer generates keys for all participants
-const dealer = new TrustedDealer(config)
-const { groupPublicKey, keyPackages } = dealer.generateKeys()
+// Generate keys for all participants
+const { groupPublicKey, keyPackages } = generateKeys(config)
 
 // Distribute key packages to participants securely
 ```
@@ -262,15 +259,14 @@ with her trusted friends.
 ```ts
 import {
     createFrostConfig,
-    TrustedDealer,
+    generateKeys,
     FrostCoordinator,
     FrostSigner
 } from '@substrate-system/frost'
 
 // Alice decides she wants a 3-of-4 threshold scheme
 const config = createFrostConfig(3, 4) // Need 3 out of 4 to sign
-const dealer = new TrustedDealer(config)
-const { groupPublicKey, keyPackages } = dealer.generateKeys()
+const { groupPublicKey, keyPackages } = generateKeys(config)
 
 // Distribute key shares to Alice, Bob, Carol, and Desmond
 const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages

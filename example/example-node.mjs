@@ -1,6 +1,6 @@
 import {
     createFrostConfig,
-    TrustedDealer,
+    generateKeys,
     FrostCoordinator,
     FrostSigner
 } from '../dist/index.js'
@@ -11,8 +11,7 @@ async function run () {
     // Step 1: Alice creates a 3-of-4 FROST setup
     console.log('1. Alice creates a 3-of-4 FROST threshold signature system')
     const config = createFrostConfig(3, 4) // Need 3 out of 4 to sign
-    const dealer = new TrustedDealer(config)
-    const { groupPublicKey, keyPackages } = dealer.generateKeys()
+    const { groupPublicKey, keyPackages } = generateKeys(config)
 
     // Name the participants
     const [_aliceKey, bobKey, carolKey, desmondKey] = keyPackages
