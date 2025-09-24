@@ -392,6 +392,9 @@ This implementation follows:
 
 ## See Also
 
-- [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
-- [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
-- [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
+* [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
+* [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
+* [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
+* [soatok/frost](https://github.com/soatok/frost) &mdash; Go implementation
+* [Lose your device, but keep your keys](https://www.iroh.computer/blog/frost-threshold-signatures)
+&mdash; FROST in [iroh](https://www.iroh.computer/)
