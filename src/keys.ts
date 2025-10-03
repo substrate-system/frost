@@ -9,7 +9,7 @@ import type {
     Scalar,
     CipherSuite
 } from './types.js'
-import { createEd25519CipherSuite } from './ciphersuite.js'
+import { createEd25519Cipher } from './cipher.js'
 
 export interface FrostConfig {
     readonly minSigners:number
@@ -44,7 +44,7 @@ export function generateKeys (configOrParams:FrostConfig|{
         {
             minSigners: configOrParams.min,
             maxSigners: configOrParams.max,
-            cipherSuite: createEd25519CipherSuite()
+            cipherSuite: createEd25519Cipher()
         })
 
     const { minSigners, maxSigners, cipherSuite } = config
@@ -112,7 +112,7 @@ generateKeys.config = function createFrostConfig (
     return {
         minSigners: min,
         maxSigners: max,
-        cipherSuite: createEd25519CipherSuite()
+        cipherSuite: createEd25519Cipher()
     }
 }
 

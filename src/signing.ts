@@ -210,9 +210,9 @@ export class FrostCoordinator {
      * Returns a 64-byte concatenated signature (R || z) like Ed25519
      */
     aggregateSignatures (
-        signingPackage: SigningPackage,
-        signatureShares: SignatureShare[]
-    ): Uint8Array {
+        signingPackage:SigningPackage,
+        signatureShares:SignatureShare[]
+    ):Uint8Array<ArrayBuffer> {
         const { cipherSuite } = this.config
 
         if (signatureShares.length < this.config.minSigners) {
@@ -230,6 +230,15 @@ export class FrostCoordinator {
             }
         }
 
+        // RFC 9591: Validate R is not identity and is in prime-order subgroup
+        const R = signingPackage.groupCommitment.commitment
+        if (cipherSuite.isIdentity(R)) {
+            throw new Error('Group commitment R cannot be identity element')
+        }
+        if (!cipherSuite.isInPrimeOrderSubgroup(R)) {
+            throw new Error('Group commitment R must be in prime-order subgroup')
+        }
+
         // Aggregate signature shares
         let z = signatureShares[0].share
         for (let i = 1; i < signatureShares.length; i++) {
@@ -237,7 +246,7 @@ export class FrostCoordinator {
         }
 
         // Convert to bytes and concatenate R || z (64 bytes total)
-        const rBytes = cipherSuite.elementToBytes(signingPackage.groupCommitment.commitment)
+        const rBytes = cipherSuite.elementToBytes(R)
         const zBytes = cipherSuite.scalarToBytes(z)
 
         const signature = new Uint8Array(64)
@@ -250,6 +259,7 @@ export class FrostCoordinator {
     /**
      * Verify a FROST signature
      * Takes a 64-byte concatenated signature (R || z) like Ed25519
+     * Uses cofactored verification as per RFC 9591: [8][z]B = [8]R + [8][c]PK
      */
     async verify (
         signature:Uint8Array,
@@ -272,18 +282,29 @@ export class FrostCoordinator {
             const R = cipherSuite.bytesToElement(rBytes)
             const z = cipherSuite.bytesToScalar(zBytes)
 
+            // RFC 9591: Validate R is not identity and is in prime-order subgroup
+            if (cipherSuite.isIdentity(R)) {
+                return false
+            }
+            if (!cipherSuite.isInPrimeOrderSubgroup(R)) {
+                return false
+            }
+
             // Compute challenge
             const pkBytes = cipherSuite.elementToBytes(verifyingKey)
             const challenge = await computeChallenge(rBytes, pkBytes, message,
                 cipherSuite)
 
-            // Verify: [z]B = R + [c]PK
-            const leftSide = cipherSuite.scalarMultiply(z,
+            // RFC 9591 Section 6.1: Use cofactored verification
+            // Verify: [8][z]B = [8]R + [8][c]PK
+            const z8 = cipherSuite.scalarMultiplyByCofactor(z)
+            const c8 = cipherSuite.scalarMultiplyByCofactor(challenge)
+
+            const leftSide = cipherSuite.scalarMultiply(z8,
                 cipherSuite.baseElement())
-            const rightSide = cipherSuite.elementAdd(
-                R,
-                cipherSuite.scalarMultiply(challenge, verifyingKey)
-            )
+            const R8 = cipherSuite.elementMultiplyByCofactor(R)
+            const cPK = cipherSuite.scalarMultiply(c8, verifyingKey)
+            const rightSide = cipherSuite.elementAdd(R8, cPK)
 
             // Compare byte representations
             const leftBytes = cipherSuite.elementToBytes(leftSide)

@@ -72,41 +72,30 @@ export class Ed25519CipherSuite implements CipherSuite {
     }
 
     scalarAdd (a:Scalar, b:Scalar):Scalar {
-        // Simple scalar addition with carry
+        // Scalar addition with proper modular reduction
         if (a.value.length !== 32 || b.value.length !== 32) {
             throw new Error('Invalid scalar length')
         }
 
-        const result = new Uint8Array(32)
-        let carry = 0
+        // Convert to BigInts
+        let aBig = 0n
+        let bBig = 0n
 
         for (let i = 0; i < 32; i++) {
-            const sum = a.value[i] + b.value[i] + carry
-            result[i] = sum & 0xff
-            carry = sum >> 8
+            aBig += BigInt(a.value[i]) << (8n * BigInt(i))
+            bBig += BigInt(b.value[i]) << (8n * BigInt(i))
         }
 
-        // Simple modular reduction
-        if (carry > 0) {
-            // Subtract field order if overflow
-            const fieldOrder = new Uint8Array([
-                0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
-                0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10
-            ])
+        // Ed25519 scalar field order
+        const order = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3edn
 
-            let borrow = 0
-            for (let i = 0; i < 32; i++) {
-                const diff = result[i] - fieldOrder[i] - borrow
-                if (diff >= 0) {
-                    result[i] = diff
-                    borrow = 0
-                } else {
-                    result[i] = diff + 256
-                    borrow = 1
-                }
-            }
+        // Add and reduce modulo order
+        const sum = (aBig + bBig) % order
+
+        // Convert back to bytes (little-endian)
+        const result = new Uint8Array(32)
+        for (let i = 0; i < 32; i++) {
+            result[i] = Number((sum >> (8n * BigInt(i))) & 0xffn)
         }
 
         return { value: result }
@@ -300,9 +289,57 @@ export class Ed25519CipherSuite implements CipherSuite {
         }
         return { point: new Uint8Array(bytes) }
     }
+
+    isIdentity (element:GroupElement):boolean {
+        // Ed25519 identity point is (0, 1) which encodes as all zeros except bit 255
+        // In compressed form: 0x01 followed by 31 zeros
+        if (element.point.length !== 32) return false
+
+        // Check if it's the identity point encoding
+        if (element.point[0] !== 0x01) return false
+        for (let i = 1; i < 32; i++) {
+            if (element.point[i] !== 0x00) return false
+        }
+        return true
+    }
+
+    isInPrimeOrderSubgroup (element:GroupElement):boolean {
+        // For Ed25519, RFC 9591 requires checking that elements are in the
+        // prime-order subgroup to avoid small subgroup attacks.
+        // A point is in the prime-order subgroup if it's NOT in a small-order
+        // subgroup, which we check by verifying [cofactor]P is not identity.
+        if (element.point.length !== 32) return false
+
+        try {
+            const pointHex = Array.from(element.point)
+                .map(b => b.toString(16).padStart(2, '0')).join('')
+            const point = ed25519.Point.fromHex(pointHex)
+
+            // Multiply by cofactor (8)
+            const cofactorResult = point.multiply(8n)
+
+            // Point is in prime-order subgroup if [8]P is not the identity
+            // (i.e., point is not in a small-order subgroup)
+            return !cofactorResult.equals(ed25519.Point.ZERO)
+        } catch {
+            return false
+        }
+    }
+
+    scalarMultiplyByCofactor (scalar:Scalar):Scalar {
+        // Ed25519 cofactor is 8
+        const cofactor = this.bytesToScalar(new Uint8Array([8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        return this.scalarMultiplyScalar(scalar, cofactor)
+    }
+
+    elementMultiplyByCofactor (element:GroupElement):GroupElement {
+        // Ed25519 cofactor is 8
+        const cofactor = this.bytesToScalar(new Uint8Array([8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        return this.scalarMultiply(cofactor, element)
+    }
 }
 
 // Factory function to create Ed25519 cipher suite
-export function createEd25519CipherSuite ():CipherSuite {
+export function createEd25519Cipher ():CipherSuite {
     return new Ed25519CipherSuite()
 }

@@ -98,10 +98,47 @@ const participants = [bobKey, carolKey, desmondKey]
 const signers = participants.map(pkg => new FrostSigner(pkg, config))
 const coordinator = new FrostCoordinator(config)
 
-// 3. FROST signing ceremony creates a threshold signature
-const message = new TextEncoder().encode("Alice's important message")
+// Generate commitments
+const round1Results = signers.map(signer => signer.sign_round1())
+const commitmentShares = round1Results.map((result, i) => ({
+    participantId: participants[i].participantId,
+    commitment: result.commitment
+}))
 
-// this signature can be verified with the `groupPublicKey`
+// FROST signing ceremony creates a threshold signature
+const message = new TextEncoder().encode('Hello, FROST!')
+const participantIds = keyPackages.map(pkg => pkg.participantId)
+
+const signingPackage = await coordinator.createSigningPackage(
+  message,
+  commitmentShares,
+  participantIds,
+  groupPublicKey
+)
+
+// Generate signature shares
+const signatureShares = await Promise.all(
+  signers.map(async (signer, i) => {
+    const result = await signer.sign_round2(
+      signingPackage,
+      round1Results[i].nonces,
+      groupPublicKey
+    )
+    return result.signatureShare
+  })
+)
+
+const finalSignature = coordinator.aggregateSignatures(
+  signingPackage,
+  signatureShares
+)
+
+// Verify signature
+const isValid = await coordinator.verify(
+    finalSignature,
+    message,
+    keys.groupPublicKey
+)
 ```
 
 ### Try it

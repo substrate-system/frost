@@ -1,4 +1,5 @@
 import { test } from '@substrate-system/tapzero'
+import { webcrypto } from '@substrate-system/one-webcrypto'
 import {
     FrostCoordinator,
     FrostSigner,
@@ -89,6 +90,26 @@ test('FROST signing protocol', async t => {
     )
 
     t.ok(isValid, 'signature should be valid')
+
+    // Verify signature with WebCrypto API (standard Ed25519 method)
+    const pkBytes = new Uint8Array(keys.groupPublicKey.point)
+
+    const publicKey = await webcrypto.subtle.importKey(
+        'raw',
+        pkBytes,
+        { name: 'Ed25519' },
+        false,
+        ['verify']
+    )
+
+    const webcryptoValid = await webcrypto.subtle.verify(
+        'Ed25519',
+        publicKey,
+        finalSignature,
+        message
+    )
+
+    t.ok(webcryptoValid, 'signature should verify with standard WebCrypto API')
 })
 
 test('FROST threshold requirement', async t => {
@@ -152,4 +173,9 @@ test('FROST threshold requirement', async t => {
 
     t.ok(signingPackage,
         'should create signing package with sufficient signers')
+})
+
+test('all done', () => {
+    // @ts-expect-error tests
+    window.testsFinished = true
 })

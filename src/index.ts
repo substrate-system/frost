@@ -29,7 +29,7 @@ export {
     type Signers
 } from './keys.js'
 export { FrostSigner, FrostCoordinator } from './signing.js'
-export { createEd25519CipherSuite, Ed25519CipherSuite } from './ciphersuite.js'
+export { createEd25519Cipher, Ed25519CipherSuite } from './cipher.js'
 export {
     encodeGroupCommitmentList,
     deriveInterpolatingValue,

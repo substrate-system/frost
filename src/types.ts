@@ -87,4 +87,8 @@ export interface CipherSuite {
     readonly scalarToBytes:(scalar:Scalar) => Uint8Array
     readonly bytesToScalar:(bytes:Uint8Array) => Scalar
     readonly bytesToElement:(bytes:Uint8Array) => GroupElement
+    readonly isIdentity:(element:GroupElement) => boolean
+    readonly isInPrimeOrderSubgroup:(element:GroupElement) => boolean
+    readonly scalarMultiplyByCofactor:(scalar:Scalar) => Scalar
+    readonly elementMultiplyByCofactor:(element:GroupElement) => GroupElement
 }
