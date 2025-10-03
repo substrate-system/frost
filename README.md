@@ -37,7 +37,6 @@ _Featuring:_
 - **Threshold Signatures**: Configurable m-of-n threshold signing
 - **Two-Round Protocol**: Efficient signing with commitment and signature rounds
 - **RFC 9591 Compliant**: [See the doc](https://www.rfc-editor.org/rfc/rfc9591.html)
-- **TypeScript**
 
 <details><summary><h2>Contents</h2></summary>
 
