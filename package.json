@@ -1,6 +1,6 @@
 {
   "name": "@substrate-system/frost",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Secure key backup & threshold signatures",
   "type": "module",
   "exports": {
