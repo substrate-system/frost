@@ -8,11 +8,13 @@
 [![gzip size](https://img.shields.io/bundlephobia/minzip/@substrate-system/frost?style=flat-square)](https://bundlephobia.com/@substrate-system/name/frost/route-event)
 [![license](https://img.shields.io/badge/license-Big_Time-blue?style=flat-square)](LICENSE)
 
-
-__Two use-cases__: private key backup and threshold signatures.
+__Two use-cases__: [private key backup](#key-backup-and-recovery) and
+[threshold signatures](#distributed-threshold-signing).
 
 This is a TypeScript implementation of the FROST threshold signature scheme as
 specified in [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html).
+
+-------
 
 FROST (Flexible Round-Optimized Schnorr Threshold signatures) is a threshold
 signature scheme that allows a group of participants to collectively generate
@@ -92,6 +94,20 @@ the social graph to securely backup your key. But this works just as well
 by distributing your key shards amongst multiple of your own devices, in case
 you lose one device.
 
+
+> [!NOTE]  
+>  We do not create a CryptoKey in `recover`.
+
+The value returned by `recover()` is a **scalar**
+(the mathematical secret used in signing), not a seed. WebCrypto's `importKey`
+expects a seed, which it then hashes with SHA-512 and bit-clamps to derive a
+scalar. Since we can't reverse this one-way process, we can't convert our
+recovered scalar back into a CryptoKey. Instead, use the `sign()` function,
+which handles the FROST signing ceremony internally using the scalar
+directly. **Signatures from `sign()` will verify correctly with the**
+**original public key**.
+
+
 ```ts
 import { webcrypto } from 'crypto'
 import {
@@ -151,9 +167,9 @@ const isValid = await webcrypto.subtle.verify(
 
 ### Distributed Threshold Signing
 
-Collaboratively sign a message. The final signature reveals only that the
-threshold was met, not *who* signed. It is cryptographically impossible to
-determine which participants signed.
+Collaboratively sign a message. **The final signature reveals only that the**
+**threshold was met**. It does not reveal _who_ signed. It is cryptographically
+impossible to determine which participants signed.
 
 ```ts
 import {
