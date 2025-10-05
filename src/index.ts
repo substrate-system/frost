@@ -25,6 +25,8 @@ export type {
 export {
     generateKeys,
     verifyKeyPackage,
+    splitExistingKey,
+    recoverPrivateKey,
     type FrostConfig,
     type Signers
 } from './keys.js'

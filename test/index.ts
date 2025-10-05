@@ -3,7 +3,9 @@ import { webcrypto } from '@substrate-system/one-webcrypto'
 import {
     FrostCoordinator,
     FrostSigner,
-    generateKeys
+    generateKeys,
+    splitExistingKey,
+    recoverPrivateKey
 } from '../src/index.js'
 
 test('FROST key generation', async t => {
@@ -173,6 +175,93 @@ test('FROST threshold requirement', async t => {
 
     t.ok(signingPackage,
         'should create signing package with sufficient signers')
+})
+
+test('WebCrypto key backup with FROST (2-of-3 recovery)', async t => {
+    // Step 1: Generate an Ed25519 keypair with WebCrypto
+    const keyPair = await webcrypto.subtle.generateKey(
+        { name: 'Ed25519' },
+        true,
+        ['sign', 'verify']
+    )
+
+    // Extract the raw private key (32 bytes)
+    const privateKeyBuffer = await webcrypto.subtle.exportKey(
+        'pkcs8',
+        keyPair.privateKey
+    )
+
+    // PKCS#8 format has overhead - extract the 32-byte seed
+    // For Ed25519, the seed is at a fixed offset in PKCS#8
+    const pkcs8 = new Uint8Array(privateKeyBuffer)
+    const seedOffset = pkcs8.length - 32
+    const privateKeySeed = pkcs8.slice(seedOffset)
+
+    t.equal(privateKeySeed.length, 32, 'private key seed should be 32 bytes')
+
+    // Ed25519 derives the scalar from SHA-512(seed) with bit clamping
+    // The first 32 bytes of SHA-512(seed) is clamped to form the scalar
+    const seedHash = await webcrypto.subtle.digest('SHA-512', privateKeySeed)
+    const seedHashBytes = new Uint8Array(seedHash)
+    const privateScalar = seedHashBytes.slice(0, 32)
+
+    // Ed25519 bit clamping: clear bits 0, 1, 2, set bit 254, clear bit 255
+    privateScalar[0] &= 248  // Clear bottom 3 bits
+    privateScalar[31] &= 127 // Clear top bit
+    privateScalar[31] |= 64  // Set bit 254
+
+    // Step 2: Split the private scalar into 3 shares (require 2 to recover)
+    const config = generateKeys.config(2, 3)
+    const { groupPublicKey, keyPackages } = splitExistingKey(
+        privateScalar,
+        config
+    )
+
+    t.equal(keyPackages.length, 3, 'should create 3 key shares')
+
+    // Verify the group public key matches the original
+    const originalPublicKeyBuffer = await webcrypto.subtle.exportKey(
+        'raw',
+        keyPair.publicKey
+    )
+    const originalPublicKey = new Uint8Array(originalPublicKeyBuffer)
+
+    t.deepEqual(
+        new Uint8Array(groupPublicKey.point),
+        originalPublicKey,
+        'group public key should match original'
+    )
+
+    // Step 3: Lose one share (simulate losing access to share #3)
+    const availableShares = keyPackages.slice(0, 2) // Only have shares 1 and 2
+
+    // Step 4: Recover the private scalar using 2 of 3 shares
+    const recoveredScalar = recoverPrivateKey(availableShares, config)
+
+    t.equal(recoveredScalar.length, 32, 'recovered scalar should be 32 bytes')
+
+    // Step 5: Verify the recovered scalar produces the same public key
+    // The scalar values may differ slightly due to modular arithmetic in Lagrange
+    // interpolation, but what matters is they produce the same public key
+    const config2 = generateKeys.config(2, 3)
+    const testSplit = splitExistingKey(recoveredScalar, config2)
+
+    t.deepEqual(
+        new Uint8Array(testSplit.groupPublicKey.point),
+        originalPublicKey,
+        'public key from recovered scalar should match original'
+    )
+
+    // Step 6: Verify different combinations of shares work
+    const differentShares = [keyPackages[0], keyPackages[2]] // shares 1 and 3
+    const recoveredScalar2 = recoverPrivateKey(differentShares, config)
+    const testSplit2 = splitExistingKey(recoveredScalar2, config2)
+
+    t.deepEqual(
+        new Uint8Array(testSplit2.groupPublicKey.point),
+        originalPublicKey,
+        'different share combination should also recover correctly'
+    )
 })
 
 test('all done', () => {

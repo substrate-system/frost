@@ -36,6 +36,7 @@ _Featuring:_
 
 - **Threshold Signatures**: Configurable m-of-n threshold signing
 - **Two-Round Protocol**: Efficient signing with commitment and signature rounds
+- **Key Backup & Recovery**: Split existing Ed25519 keys for backup, recover with threshold shares
 - **RFC 9591 Compliant**: [See the doc](https://www.rfc-editor.org/rfc/rfc9591.html)
 
 <details><summary><h2>Contents</h2></summary>
@@ -54,6 +55,8 @@ _Featuring:_
   * [2. Signing Ceremony](#2-signing-ceremony)
 - [Step-by-Step Guide](#step-by-step-guide)
   * [Example](#example-1)
+- [Key Backup and Recovery](#key-backup-and-recovery)
+  * [Backup Example](#backup-example)
 - [Types](#types)
   * [Protocol Types](#protocol-types)
 - [Security](#security)
@@ -182,6 +185,28 @@ const keyGenResult = generateKeys(config)
 // Result contains:
 // - groupPublicKey: The collective public key
 // - keyPackages: Individual key packages for each participant
+```
+
+#### `splitExistingKey(existingKey: Uint8Array, config: FrostConfig)`
+
+Splits an existing Ed25519 private key into FROST shares using trusted dealer.
+
+```ts
+const { groupPublicKey, keyPackages } = splitExistingKey(privateScalar, config)
+
+// Use for key backup - splits one key into n shares
+// Requires m-of-n shares to recover
+```
+
+#### `recoverPrivateKey(keyPackages: KeyPackage[], config: FrostConfig)`
+
+Recovers the original private key from threshold shares using Lagrange interpolation.
+
+```ts
+const recoveredKey = recoverPrivateKey(keyPackages, config)
+
+// Requires at least minSigners key packages
+// Returns the original 32-byte Ed25519 private scalar
 ```
 
 #### `verifyKeyPackage(keyPackage:KeyPackage, config:FrostConfig)`
@@ -359,6 +384,69 @@ console.log('Threshold signature valid:', valid)  // Should be true
 
 The signature is mathematically equivalent to a single-key signature
 
+## Key Backup and Recovery
+
+FROST can be used to backup existing Ed25519 private keys by splitting them
+into threshold shares. This is useful for creating resilient key storage where
+you need multiple shares to recover the original key.
+
+### Backup Example
+
+```ts
+import { webcrypto } from 'crypto'
+import {
+    generateKeys,
+    splitExistingKey,
+    recoverPrivateKey
+} from '@substrate-system/frost'
+
+// 1. Generate or use existing Ed25519 keypair
+const keyPair = await webcrypto.subtle.generateKey(
+    { name: 'Ed25519' },
+    true,
+    ['sign', 'verify']
+)
+
+// 2. Extract the private key seed
+const privateKeyBuffer = await webcrypto.subtle.exportKey(
+    'pkcs8',
+    keyPair.privateKey
+)
+const pkcs8 = new Uint8Array(privateKeyBuffer)
+const privateKeySeed = pkcs8.slice(pkcs8.length - 32)
+
+// 3. Derive the Ed25519 scalar with proper bit clamping
+const seedHash = await webcrypto.subtle.digest('SHA-512', privateKeySeed)
+const seedHashBytes = new Uint8Array(seedHash)
+const privateScalar = seedHashBytes.slice(0, 32)
+privateScalar[0] &= 248   // Clear bottom 3 bits
+privateScalar[31] &= 127  // Clear top bit
+privateScalar[31] |= 64   // Set bit 254
+
+// 4. Split into 3 shares (require 2 to recover)
+const config = generateKeys.config(2, 3)
+const { groupPublicKey, keyPackages } = splitExistingKey(privateScalar, config)
+
+// 5. Distribute shares to different locations
+// - Share 1: USB drive in safe
+// - Share 2: Cloud backup (encrypted)
+// - Share 3: Paper backup at bank
+
+// 6. Later, recover using any 2 of 3 shares
+const availableShares = [keyPackages[0], keyPackages[2]]
+const recoveredScalar = recoverPrivateKey(availableShares, config)
+
+// 7. Verify recovery by checking the public key matches
+const verification = splitExistingKey(recoveredScalar, config)
+// verification.groupPublicKey matches original
+```
+
+**Important Notes:**
+- The recovered scalar will produce the same public key as the original
+- You need at least the threshold number of shares to recover
+- Different combinations of shares all recover the same key
+- For WebCrypto compatibility, you need to work with the derived scalar,
+  not the raw seed
 
 ## Types
 
@@ -433,4 +521,4 @@ This implementation follows:
 * [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
 * [soatok/frost](https://github.com/soatok/frost) &mdash; Go implementation
 * [Lose your device, but keep your keys](https://www.iroh.computer/blog/frost-threshold-signatures)
-&mdash; FROST in [iroh](https://www.iroh.computer/)
+  &mdash; FROST in [iroh](https://www.iroh.computer/)
