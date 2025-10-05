@@ -1,7 +1,7 @@
 {
   "name": "@substrate-system/frost",
   "version": "0.0.8",
-  "description": "FROST signatures",
+  "description": "Secure key backup & threshold signatures",
   "type": "module",
   "exports": {
     ".": {
@@ -74,7 +74,9 @@
   "keywords": [
     "FROST",
     "signature",
-    "cryptography"
+    "cryptography",
+    "backup",
+    "threshold"
   ],
   "homepage": "https://github.com/substrate-system/frost",
   "bugs": {
