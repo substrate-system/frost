@@ -9,7 +9,9 @@
 [![license](https://img.shields.io/badge/license-Big_Time-blue?style=flat-square)](LICENSE)
 
 
-A TypeScript implementation of the FROST threshold signature scheme as
+__Two use-cases__: private key backuup and threshold signatures.
+
+This is a TypeScript implementation of the FROST threshold signature scheme as
 specified in [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html).
 
 FROST (Flexible Round-Optimized Schnorr Threshold signatures) is a threshold
