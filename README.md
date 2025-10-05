@@ -9,7 +9,7 @@
 [![license](https://img.shields.io/badge/license-Big_Time-blue?style=flat-square)](LICENSE)
 
 
-__Two use-cases__: private key backuup and threshold signatures.
+__Two use-cases__: private key backup and threshold signatures.
 
 This is a TypeScript implementation of the FROST threshold signature scheme as
 specified in [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html).
