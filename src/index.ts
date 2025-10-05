@@ -24,9 +24,12 @@ export type {
 
 export {
     generateKeys,
+    createFrostConfig,
     verifyKeyPackage,
-    splitExistingKey,
-    recoverPrivateKey,
+    split,
+    recover,
+    sign,
+    thresholdSign,
     type FrostConfig,
     type Signers
 } from './keys.js'

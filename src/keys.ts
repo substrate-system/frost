@@ -105,7 +105,7 @@ export function generateKeys (configOrParams:FrostConfig|{
 /**
  * Create a FROST configuration with Ed25519 cipher suite
  */
-generateKeys.config = function createFrostConfig (
+export function createFrostConfig (
     min:number,
     max:number
 ):FrostConfig {
@@ -115,6 +115,9 @@ generateKeys.config = function createFrostConfig (
         cipherSuite: createEd25519Cipher()
     }
 }
+
+// Also attach to generateKeys for backward compatibility
+generateKeys.config = createFrostConfig
 
 function scalarFromInt (config:FrostConfig, value:number):Scalar {
     const { cipherSuite } = config
@@ -223,22 +226,58 @@ function generateSigningCommitments (config:FrostConfig, count:number) {
 
 /**
  * Split an existing Ed25519 private key into FROST shares using trusted dealer
- * @param existingKey - The existing 32-byte Ed25519 private key to split
+ * @param privateKey - Ed25519 private key in one of the following formats:
+ *   - CryptoKey (will be exported as PKCS#8)
+ *   - Uint8Array in PKCS#8 format
+ *   - Uint8Array 32-byte raw scalar
  * @param config - FROST configuration specifying min/max signers
  * @returns Signers object with key packages for each participant
  */
-export function splitExistingKey (
-    existingKey:Uint8Array,
+export async function split (
+    privateKey:CryptoKey|Uint8Array,
     config:FrostConfig
-):Signers {
+):Promise<Signers> {
     const { minSigners, maxSigners, cipherSuite } = config
 
-    if (existingKey.length !== 32) {
-        throw new Error('Ed25519 private key must be 32 bytes')
+    let privateScalar:Uint8Array
+
+    // Handle CryptoKey input
+    if (privateKey instanceof CryptoKey) {
+        // Export the private key
+        const privateKeyBuffer = await crypto.subtle.exportKey('pkcs8', privateKey)
+        const pkcs8 = new Uint8Array(privateKeyBuffer)
+
+        // Extract the 32-byte seed from PKCS#8 format
+        const privateKeySeed = pkcs8.slice(pkcs8.length - 32)
+
+        // Derive the Ed25519 scalar with proper bit clamping
+        const seedHash = await crypto.subtle.digest('SHA-512', privateKeySeed)
+        const seedHashBytes = new Uint8Array(seedHash)
+        privateScalar = seedHashBytes.slice(0, 32)
+        privateScalar[0] &= 248   // Clear bottom 3 bits
+        privateScalar[31] &= 127  // Clear top bit
+        privateScalar[31] |= 64   // Set bit 254
+    } else {
+        // Handle Uint8Array input - support both PKCS#8 and raw scalar formats
+        if (privateKey.length === 32) {
+            // Raw 32-byte scalar
+            privateScalar = privateKey
+        } else {
+            // Assume PKCS#8 format
+            const privateKeySeed = privateKey.slice(privateKey.length - 32)
+
+            // Derive the Ed25519 scalar with proper bit clamping
+            const seedHash = await crypto.subtle.digest('SHA-512', privateKeySeed)
+            const seedHashBytes = new Uint8Array(seedHash)
+            privateScalar = seedHashBytes.slice(0, 32)
+            privateScalar[0] &= 248   // Clear bottom 3 bits
+            privateScalar[31] &= 127  // Clear top bit
+            privateScalar[31] |= 64   // Set bit 254
+        }
     }
 
     // Convert the existing key to a scalar
-    const secretKey = cipherSuite.bytesToScalar(existingKey)
+    const secretKey = cipherSuite.bytesToScalar(privateScalar)
 
     // Generate group public key from the existing secret
     const groupPublicKey = cipherSuite.scalarMultiply(secretKey,
@@ -291,12 +330,13 @@ export function splitExistingKey (
 }
 
 /**
- * Recover the original private key from threshold shares using Lagrange interpolation
+ * Recover the original private key from threshold shares using
+ * Lagrange interpolation.
  * @param keyPackages - At least minSigners key packages to recover the key from
  * @param config - FROST configuration
  * @returns The recovered 32-byte Ed25519 private key
  */
-export function recoverPrivateKey (
+export function recover (
     keyPackages:KeyPackage[],
     config:FrostConfig
 ):Uint8Array {
@@ -353,4 +393,114 @@ export function recoverPrivateKey (
 
     // Convert scalar back to bytes
     return cipherSuite.scalarToBytes(secret)
+}
+
+/**
+ * Sign a message using a recovered private key
+ * @param recoveredKey - The 32-byte private key from recover()
+ * @param message - The message to sign
+ * @param config - FROST configuration
+ * @returns Ed25519 signature (64 bytes)
+ */
+export async function sign (
+    recoveredKey:Uint8Array,
+    message:Uint8Array,
+    config:FrostConfig
+):Promise<Uint8Array<ArrayBuffer>> {
+    // Import the signing module to avoid circular dependency
+    const { FrostSigner, FrostCoordinator } = await import('./signing.js')
+
+    // Split the recovered key to create signers
+    const { groupPublicKey, keyPackages } = await split(recoveredKey, config)
+
+    // Use minimum required signers
+    const signerPackages = keyPackages.slice(0, config.minSigners)
+    const signers = signerPackages.map(pkg => new FrostSigner(pkg, config))
+    const coordinator = new FrostCoordinator(config)
+
+    // Round 1: Generate commitments
+    const round1Results = signers.map(signer => signer.sign_round1())
+    const commitmentShares = round1Results.map((result, i) => ({
+        participantId: signerPackages[i].participantId,
+        commitment: result.commitment
+    }))
+
+    // Create signing package
+    const signingPackage = await coordinator.createSigningPackage(
+        message,
+        commitmentShares,
+        signerPackages.map(pkg => pkg.participantId),
+        groupPublicKey
+    )
+
+    // Round 2: Generate signature shares
+    const signatureShares = await Promise.all(
+        signers.map(async (signer, i) => {
+            const result = await signer.sign_round2(
+                signingPackage,
+                round1Results[i].nonces,
+                groupPublicKey
+            )
+            return result.signatureShare
+        })
+    )
+
+    // Aggregate into final signature
+    return coordinator.aggregateSignatures(signingPackage, signatureShares)
+}
+
+/**
+ * Create a threshold signature using key packages from multiple participants
+ * @param keyPackages - Key packages from participants (must meet threshold)
+ * @param message - The message to sign
+ * @param groupPublicKey - The group public key
+ * @param config - FROST configuration
+ * @returns Ed25519 signature (64 bytes)
+ */
+export async function thresholdSign (
+    keyPackages:KeyPackage[],
+    message:Uint8Array,
+    groupPublicKey:GroupElement,
+    config:FrostConfig
+):Promise<Uint8Array> {
+    const { FrostSigner, FrostCoordinator } = await import('./signing.js')
+
+    if (keyPackages.length < config.minSigners) {
+        throw new Error(
+            `Need at least ${config.minSigners} signers, got ${keyPackages.length}`
+        )
+    }
+
+    const signers = keyPackages.map(pkg => new FrostSigner(pkg, config))
+    const coordinator = new FrostCoordinator(config)
+
+    // Round 1: Generate commitments
+    const round1Results = signers.map(signer => signer.sign_round1())
+    const commitmentShares = round1Results.map((result, i) => ({
+        participantId: keyPackages[i].participantId,
+        commitment: result.commitment
+    }))
+
+    // Create signing package
+    const signingPackage = await coordinator.createSigningPackage(
+        message,
+        commitmentShares,
+        keyPackages.map(pkg => pkg.participantId),
+        groupPublicKey
+    )
+
+    // Round 2: Generate signature shares
+    const signatureShares = await Promise.all(
+        signers.map(async (signer, i) => {
+            const result = await signer.sign_round2(
+                signingPackage,
+                round1Results[i].nonces,
+                groupPublicKey
+            )
+            return result.signatureShare
+        })
+    )
+
+    // Aggregate into final signature
+    return coordinator.aggregateSignatures(signingPackage, signatureShares)
 }

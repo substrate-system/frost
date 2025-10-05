@@ -164,7 +164,9 @@ function Example () {
                 <div class="data col-half">
                     <p>
                         <strong>Keys: </strong>
-                        Ed25519 keypair created with <a href="https://github.com/paulmillr/noble-ed25519">
+                        Ed25519 keypair created with <a
+                            href="https://github.com/paulmillr/noble-ed25519"
+                        >
                             @noble/ed25519
                         </a>
                     </p>

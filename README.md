@@ -34,9 +34,13 @@ participants to create future signatures.
 
 _Featuring:_
 
-- **Threshold Signatures**: Configurable m-of-n threshold signing
-- **Two-Round Protocol**: Efficient signing with commitment and signature rounds
-- **Key Backup & Recovery**: Split existing Ed25519 keys for backup, recover with threshold shares
+- **Simple Key Backup**: Split any Ed25519 key with `split()`, recover
+  with `recover()`
+- **Easy Signing**: Sign with recovered keys using `sign()` - no
+  ceremony complexity
+- **Flexible Input**: Accepts CryptoKey, PKCS#8, or raw 32-byte keys
+- **Threshold Signatures**: Configurable m-of-n threshold signing for advanced
+  use cases
 - **RFC 9591 Compliant**: [See the doc](https://www.rfc-editor.org/rfc/rfc9591.html)
 
 <details><summary><h2>Contents</h2></summary>
@@ -45,26 +49,22 @@ _Featuring:_
 
 - [Installation](#installation)
 - [Example](#example)
-  * [Try it](#try-it)
+  * [Key Backup and Recovery](#key-backup-and-recovery)
+  * [Distributed Threshold Signing](#distributed-threshold-signing)
+- [Try it](#try-it)
+- [Test](#test)
 - [API](#api)
-  * [Configuration](#configuration)
-  * [Key Generation](#key-generation)
+  * [Key Backup](#key-backup)
+  * [Distributed Signing](#distributed-signing)
+- [Standards](#standards)
+- [See Also](#see-also)
+- [Internals](#internals)
   * [Signing Protocol](#signing-protocol)
 - [Protocol Flow](#protocol-flow)
   * [1. Key Generation (Setup)](#1-key-generation-setup)
   * [2. Signing Ceremony](#2-signing-ceremony)
 - [Step-by-Step Guide](#step-by-step-guide)
   * [Example](#example-1)
-- [Key Backup and Recovery](#key-backup-and-recovery)
-  * [Backup Example](#backup-example)
-- [Types](#types)
-  * [Protocol Types](#protocol-types)
-- [Security](#security)
-- [Production Considerations](#production-considerations)
-- [Testing](#testing)
-- [Building](#building)
-- [Standards Compliance](#standards-compliance)
-- [See Also](#see-also)
 
 <!-- tocstop -->
 
@@ -78,73 +78,114 @@ npm i -S @substrate-system/frost
 
 ## Example
 
-A simple scenario: Alice creates threshold keys, then creates
-signatures with help from Bob, Carol, and Desmond.
+### Key Backup and Recovery
+
+FROST can be used to backup an existing Ed25519 private key by splitting it
+into threshold shares. This is useful for creating secure key storage where
+you need multiple shares to recover the original key.
+
+In [Dark Crystal](https://darkcrystal.pw/), for example, the intended use is
+to give the shards of your private key to several of your friends, using
+the social graph to securely backup your key. But this works just as well
+by distributing your key shards amongst multiple of your own devices, in case
+you lose one device.
+
+```ts
+import { webcrypto } from 'crypto'
+import {
+    createFrostConfig,
+    split,
+    recover,
+    sign
+} from '@substrate-system/frost'
+
+// 1. Generate or use existing Ed25519 keypair
+const keyPair = await webcrypto.subtle.generateKey(
+    { name: 'Ed25519' },
+    true,  // extractable so we can split the private key
+    ['sign', 'verify']
+)
+
+// 2. Split into 3 shares (require 2 to recover)
+const config = createFrostConfig(2, 3)
+const { groupPublicKey, keyPackages } = await split(
+    keyPair.privateKey,
+    config
+)
+
+// 3. Distribute shares to different locations
+// - Share 1: USB drive in safe
+// - Share 2: Cloud backup (encrypted)
+// - Share 3: Paper backup
+
+// 4. Later, recover using any 2 of 3 shares
+const availableShares = [keyPackages[0], keyPackages[2]]
+const recoveredKey = recover(availableShares, config)
+
+// 5. Use the recovered key to sign
+const message = new TextEncoder().encode('Important message')
+const signature = await sign(recoveredKey, message, config)
+
+// 6. Verify the signature with the original public key
+const isValid = await webcrypto.subtle.verify(
+    'Ed25519',
+    keyPair.publicKey,
+    signature,
+    message
+)
+```
+
+> [!NOTE]  
+>   - `split` accepts CryptoKey, Uint8Array (PKCS#8), or Uint8Array
+>     (32-byte raw scalar)
+>   - The recovered key will produce the same public key as the original
+>   - You need at least the threshold number of shares to recover
+>   - Different combinations of shares all recover the same key
+> 
+
+
+-------------
+
+
+### Distributed Threshold Signing
+
+Collaboratively sign a message. The final signature reveals only that the
+threshold was met, not *who* signed. It is cryptographically impossible to
+determine which participants signed.
 
 ```ts
 import {
-    createFrostConfig,
-    generateKeys,
-    FrostCoordinator,
-    FrostSigner
+  createFrostConfig,
+  generateKeys,
+  thresholdSign
 } from '@substrate-system/frost'
 
 // 1. Alice creates a 3-of-4 FROST setup
 const config = createFrostConfig(3, 4)  // Need 3 out of 4 to sign
 const { groupPublicKey, keyPackages } = generateKeys(config)
 
-// Name the participants
+// 2. Distribute key packages to participants
 const [aliceKey, bobKey, carolKey, desmondKey] = keyPackages
 
-// 2. Later, creates a signature using Bob, Carol, and Desmond
-const participants = [bobKey, carolKey, desmondKey]
-const signers = participants.map(pkg => new FrostSigner(pkg, config))
-const coordinator = new FrostCoordinator(config)
-
-// Generate commitments
-const round1Results = signers.map(signer => signer.sign_round1())
-const commitmentShares = round1Results.map((result, i) => ({
-    participantId: participants[i].participantId,
-    commitment: result.commitment
-}))
-
-// FROST signing ceremony creates a threshold signature
+// 3. Later, any 3 participants can create a signature
 const message = new TextEncoder().encode('Hello, FROST!')
-const participantIds = keyPackages.map(pkg => pkg.participantId)
-
-const signingPackage = await coordinator.createSigningPackage(
-  message,
-  commitmentShares,
-  participantIds,
-  groupPublicKey
-)
-
-// Generate signature shares
-const signatureShares = await Promise.all(
-  signers.map(async (signer, i) => {
-    const result = await signer.sign_round2(
-      signingPackage,
-      round1Results[i].nonces,
-      groupPublicKey
-    )
-    return result.signatureShare
-  })
-)
-
-const finalSignature = coordinator.aggregateSignatures(
-  signingPackage,
-  signatureShares
-)
-
-// Verify signature
-const isValid = await coordinator.verify(
-    finalSignature,
+const signature = await thresholdSign(
+    [bobKey, carolKey, desmondKey],  // Any 3 participants
     message,
-    keys.groupPublicKey
+    groupPublicKey,
+    config
+)
+
+// 4. Verify signature
+const isValid = await crypto.subtle.verify(
+    'Ed25519',
+    new Uint8Array(groupPublicKey.point),
+    signature,
+    message
 )
 ```
 
-### Try it
+## Try it
 
 Run the example locally.
 
@@ -158,64 +199,167 @@ This will execute the complete example showing:
 3. Using any 3 participants to create threshold signatures
 4. Verifying the signature is valid
 
+
+## Test
+
+Run the tests:
+
+```sh
+npm test
+```
+
+Start the example:
+
+```sh
+npm start
+```
+
+
+-------------------------------------------------------
+
+
 ## API
 
-### Configuration
+### Key Backup
 
-#### `createFrostConfig(minSigners:number, maxSigners:number)`
+#### `createFrostConfig`
 
 Creates a FROST configuration with Ed25519 cipher suite.
 
-- `minSigners`: Minimum number of participants required for signing
-- `maxSigners`: Total number of participants
-
 ```ts
-const config = createFrostConfig(3, 5)  // 3-of-5 threshold
+function createFrostConfig (
+  minSigners: number,
+  maxSigners: number
+): FrostConfig
 ```
 
-### Key Generation
-
-#### `generateKeys(config: FrostConfig)`
-
-Generates keys for all participants.
-
 ```ts
-const keyGenResult = generateKeys(config)
-
-// Result contains:
-// - groupPublicKey: The collective public key
-// - keyPackages: Individual key packages for each participant
+const config = createFrostConfig(2, 3)  // 2-of-3 threshold
 ```
 
-#### `splitExistingKey(existingKey: Uint8Array, config: FrostConfig)`
-
-Splits an existing Ed25519 private key into FROST shares using trusted dealer.
+#### `split`
 
 ```ts
-const { groupPublicKey, keyPackages } = splitExistingKey(privateScalar, config)
-
-// Use for key backup - splits one key into n shares
-// Requires m-of-n shares to recover
+async function split (
+  privateKey: CryptoKey | Uint8Array,
+  config: FrostConfig
+): Promise<Signers>
 ```
-
-#### `recoverPrivateKey(keyPackages: KeyPackage[], config: FrostConfig)`
-
-Recovers the original private key from threshold shares using Lagrange interpolation.
 
 ```ts
-const recoveredKey = recoverPrivateKey(keyPackages, config)
-
-// Requires at least minSigners key packages
-// Returns the original 32-byte Ed25519 private scalar
+const { groupPublicKey, keyPackages } = await split(keyPair.privateKey, config)
 ```
 
-#### `verifyKeyPackage(keyPackage:KeyPackage, config:FrostConfig)`
+#### `recover`
+
+Recover the private key from threshold shares.
+
+```ts
+function recover (
+  keyPackages: KeyPackage[],
+  config: FrostConfig
+): Uint8Array
+```
+
+```ts
+const recoveredKey = recover(keyPackages.slice(0, 2), config)
+```
+
+#### `sign`
+
+Sign a message with a recovered key.
+
+```ts
+async function sign (
+  recoveredKey:Uint8Array,
+  message:Uint8Array,
+  config:FrostConfig
+):Promise<Uint8Array<ArrayBuffer>>
+```
+
+```ts
+const signature = await sign(recoveredKey, message, config)
+```
+
+#### `thresholdSign`
+
+Create a threshold signature from multiple participants.
+
+```ts
+async function thresholdSign (
+  keyPackages:KeyPackage[],
+  message:Uint8Array,
+  groupPublicKey:GroupElement,
+  config:FrostConfig
+):Promise<Uint8Array>
+```
+
+```ts
+const signature = await thresholdSign(
+    [aliceKey, bobKey, carolKey],  // Participant key packages
+    message,
+    groupPublicKey,
+    config
+)
+```
+
+### Distributed Signing
+
+#### `generateKeys`
+
+Generate keys for all participants.
+
+```ts
+function generateKeys (config:FrostConfig):Signers
+```
+
+```ts
+const { groupPublicKey, keyPackages } = generateKeys(config)
+// groupPublicKey: The collective public key
+// keyPackages: Individual key packages for each participant
+```
+
+#### `verifyKeyPackage`
 
 Verifies that a key package is valid.
 
-```typescript
+```ts
+function verifyKeyPackage (
+  keyPackage:KeyPackage,
+  config:FrostConfig
+):boolean
+```
+
+```ts
 const isValid = verifyKeyPackage(keyPackage, config)
 ```
+
+
+---------------------------------------------------------------
+
+
+## Standards
+
+This implementation follows:
+
+- [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html) - The Flexible
+  Round-Optimized Schnorr Threshold (FROST) Protocol
+
+
+## See Also
+
+* [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
+* [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
+* [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
+* [soatok/frost](https://github.com/soatok/frost) &mdash; Go implementation
+* [Lose your device, but keep your keys](https://www.iroh.computer/blog/frost-threshold-signatures)
+  &mdash; FROST in [iroh](https://www.iroh.computer/)
+
+
+-----------------------------------------------------------------------
+
+
+## Internals
 
 ### Signing Protocol
 
@@ -383,142 +527,3 @@ console.log('Threshold signature valid:', valid)  // Should be true
 ```
 
 The signature is mathematically equivalent to a single-key signature
-
-## Key Backup and Recovery
-
-FROST can be used to backup existing Ed25519 private keys by splitting them
-into threshold shares. This is useful for creating resilient key storage where
-you need multiple shares to recover the original key.
-
-### Backup Example
-
-```ts
-import { webcrypto } from 'crypto'
-import {
-    generateKeys,
-    splitExistingKey,
-    recoverPrivateKey
-} from '@substrate-system/frost'
-
-// 1. Generate or use existing Ed25519 keypair
-const keyPair = await webcrypto.subtle.generateKey(
-    { name: 'Ed25519' },
-    true,
-    ['sign', 'verify']
-)
-
-// 2. Extract the private key seed
-const privateKeyBuffer = await webcrypto.subtle.exportKey(
-    'pkcs8',
-    keyPair.privateKey
-)
-const pkcs8 = new Uint8Array(privateKeyBuffer)
-const privateKeySeed = pkcs8.slice(pkcs8.length - 32)
-
-// 3. Derive the Ed25519 scalar with proper bit clamping
-const seedHash = await webcrypto.subtle.digest('SHA-512', privateKeySeed)
-const seedHashBytes = new Uint8Array(seedHash)
-const privateScalar = seedHashBytes.slice(0, 32)
-privateScalar[0] &= 248   // Clear bottom 3 bits
-privateScalar[31] &= 127  // Clear top bit
-privateScalar[31] |= 64   // Set bit 254
-
-// 4. Split into 3 shares (require 2 to recover)
-const config = generateKeys.config(2, 3)
-const { groupPublicKey, keyPackages } = splitExistingKey(privateScalar, config)
-
-// 5. Distribute shares to different locations
-// - Share 1: USB drive in safe
-// - Share 2: Cloud backup (encrypted)
-// - Share 3: Paper backup at bank
-
-// 6. Later, recover using any 2 of 3 shares
-const availableShares = [keyPackages[0], keyPackages[2]]
-const recoveredScalar = recoverPrivateKey(availableShares, config)
-
-// 7. Verify recovery by checking the public key matches
-const verification = splitExistingKey(recoveredScalar, config)
-// verification.groupPublicKey matches original
-```
-
-**Important Notes:**
-- The recovered scalar will produce the same public key as the original
-- You need at least the threshold number of shares to recover
-- Different combinations of shares all recover the same key
-- For WebCrypto compatibility, you need to work with the derived scalar,
-  not the raw seed
-
-## Types
-
-```ts
-import * as types from '@substrate-system/frost/types'
-```
-
-- `ParticipantId`: Identifies a participant in the protocol
-- `Scalar`: Represents a scalar value in the cryptographic group
-- `GroupElement`: Represents a point on the elliptic curve
-- `FrostSignature`: The final threshold signature with R and z components
-
-### Protocol Types
-
-- `KeyPackage`: Contains participant's key material and commitments
-- `SigningPackage`: Bundles message and commitments for round 2
-- `RoundOneOutputs`: Nonces and commitments from round 1
-- `RoundTwoOutputs`: Signature share from round 2
-
-## Security
-
-**Secure Random Generation**: `crypto.getRandomValues()` for entropy
-**SHA-512 Hashing**: Web Crypto API for secure hash operations
-
-
-## Production Considerations
-
-1. **Secure Communication**: Ensure secure channels between participants
-2. **Input Validation**: All inputs are validated for correct length and format
-3. **Error Handling**: Comprehensive error handling for cryptographic failures
-4. **Side-Channel Protection**: Consider timing attack mitigations for
-   sensitive operations
-5. **Key Management**: Implement secure storage and distribution of key packages
-
-## Testing
-
-Run the test suite:
-
-```bash
-npm test
-```
-
-View the interactive example:
-
-```bash
-npm start
-```
-
-## Building
-
-Build the library:
-
-```bash
-npm run build
-```
-
-This generates both CommonJS and ES modules in the `dist/` directory.
-
-## Standards Compliance
-
-This implementation follows:
-
-- [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html) - The Flexible
-  Round-Optimized Schnorr Threshold (FROST) Protocol
-- Ed25519 signature
-
-
-## See Also
-
-* [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
-* [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
-* [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
-* [soatok/frost](https://github.com/soatok/frost) &mdash; Go implementation
-* [Lose your device, but keep your keys](https://www.iroh.computer/blog/frost-threshold-signatures)
-  &mdash; FROST in [iroh](https://www.iroh.computer/)
