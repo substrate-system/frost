@@ -168,7 +168,7 @@ const isValid = await webcrypto.subtle.verify(
 ### Distributed Threshold Signing
 
 Collaboratively sign a message. **The final signature reveals only that the**
-**threshold was met**. It does not reveal _who_ signed. It is cryptographically
+**threshold was met. It does not reveal _who_ signed**. It is cryptographically
 impossible to determine which participants signed.
 
 ```ts
@@ -299,6 +299,12 @@ async function sign (
 const signature = await sign(recoveredKey, message, config)
 ```
 
+
+-------
+
+
+### Distributed Signing
+
 #### `thresholdSign`
 
 Create a threshold signature from multiple participants.
@@ -320,8 +326,6 @@ const signature = await thresholdSign(
     config
 )
 ```
-
-### Distributed Signing
 
 #### `generateKeys`
 
