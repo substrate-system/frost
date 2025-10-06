@@ -53,8 +53,10 @@ export function generateKeys (configOrParams:FrostConfig|{
     const secretKey = cipherSuite.randomScalar()
 
     // Generate group public key
-    const groupPublicKey = cipherSuite.scalarMultiply(secretKey,
-        cipherSuite.baseElement())
+    const groupPublicKey = cipherSuite.scalarMultiply(
+        secretKey,
+        cipherSuite.baseElement()
+    )
 
     // Generate polynomial coefficients for Shamir's secret sharing
     const coefficients = [secretKey]
@@ -74,8 +76,10 @@ export function generateKeys (configOrParams:FrostConfig|{
         )
 
         // Compute public share
-        const publicShare = cipherSuite.scalarMultiply(privateShare,
-            cipherSuite.baseElement())
+        const publicShare = cipherSuite.scalarMultiply(
+            privateShare,
+            cipherSuite.baseElement()
+        )
 
         const keyShare:KeyShare = {
             participantId: { id: participantId },
