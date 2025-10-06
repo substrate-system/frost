@@ -372,6 +372,7 @@ This implementation follows:
 
 * [FROST RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html)
 * [Ed25519 Signature Scheme](https://ed25519.cr.yp.to/)
+* [Improving Geographical Resilience For Distributed Open Source Teams with FREEON](https://soatok.blog/2025/08/09/improving-geographical-resilience-for-distributed-open-source-teams-with-freeon/)
 * [Threshold Cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
 * [soatok/frost](https://github.com/soatok/frost) &mdash; Go implementation
 * [Lose your device, but keep your keys](https://www.iroh.computer/blog/frost-threshold-signatures)
