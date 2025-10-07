@@ -14,39 +14,6 @@ __Two use-cases__: [private key backup](#key-backup-and-recovery) and
 This is a TypeScript implementation of the FROST threshold signature scheme as
 specified in [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591.html).
 
--------
-
-FROST (Flexible Round-Optimized Schnorr Threshold signatures) is a threshold
-signature scheme that allows a group of participants to collectively generate
-signatures, requiring a minimum number of participants during
-the signing process.
-
-A single private key gets split into multiple shards during setup.
-Each participant gets one shard of the key. The original private key can
-be discarded/lost at this point.
-
-The participants use their individual key shards to
-collectively create signatures that are mathematically equivalent to what
-the original private key would have produced, but the original private key
-itself is never reconstructed.
-
-Even after successful signing ceremonies, no single
-participant ever gains access to the complete private key. The threshold
-property is maintained permanently &mdash; you always need the minimum number of
-participants to create future signatures.
-
-
-_Featuring:_
-
-- **Simple Key Backup**: Split any Ed25519 key with `split()`, recover
-  with `recover()`
-- **Easy Signing**: Sign with recovered keys using `sign()` - no
-  ceremony complexity
-- **Flexible Input**: Accepts CryptoKey, PKCS#8, or raw 32-byte keys
-- **Threshold Signatures**: Configurable m-of-n threshold signing for advanced
-  use cases
-- **RFC 9591 Compliant**: [See the doc](https://www.rfc-editor.org/rfc/rfc9591.html)
-
 <details><summary><h2>Contents</h2></summary>
 
 <!-- toc -->
@@ -73,6 +40,43 @@ _Featuring:_
 <!-- tocstop -->
 
 </details>
+
+-------
+
+FROST (Flexible Round-Optimized Schnorr Threshold signatures) is a threshold
+signature scheme that allows a group of participants to collectively generate
+signatures, requiring a minimum number of participants during
+the signing process.
+
+The [threshold signature](https://en.wikipedia.org/wiki/Threshold_cryptosystem)
+**reveals only that the threshold was met. It does not reveal _who_ signed**.
+It is cryptographically impossible to determine which participants signed.
+
+A single private key gets split into multiple shards during setup.
+Each participant gets one shard of the key. The original private key can
+be discarded/lost at this point.
+
+The participants use their individual key shards to
+collectively create signatures that are mathematically equivalent to what
+the original private key would have produced, but the original private key
+itself is never reconstructed.
+
+Even after successful signing ceremonies, no single
+participant ever gains access to the complete private key. The threshold
+property is maintained permanently &mdash; you always need the minimum number of
+participants to create future signatures.
+
+
+_Featuring:_
+
+- **Simple Key Backup**: Split any Ed25519 key with `split()`, recover
+  with `recover()`
+- **Easy Signing**: Sign with recovered keys using `sign()` - no
+  ceremony complexity
+- **Flexible Input**: Accepts CryptoKey, PKCS#8, or raw 32-byte keys
+- **Threshold Signatures**: Configurable m-of-n threshold signing for advanced
+  use cases
+- **RFC 9591 Compliant**: [See the doc](https://www.rfc-editor.org/rfc/rfc9591.html)
 
 ## Installation
 
