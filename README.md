@@ -113,7 +113,7 @@ directly. **Signatures from `sign()` will verify correctly with the**
 
 
 ```ts
-import { webcrypto } from 'crypto'
+import { webcrypto } from '@substrate-system/one-webcrypto'
 import {
     createFrostConfig,
     split,
